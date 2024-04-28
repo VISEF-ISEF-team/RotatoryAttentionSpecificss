@@ -43,9 +43,10 @@ def write_csv(path, data, first=False):
 
 def check_directory_exists(directory):
     if os.path.isdir(directory):
-        return
+        return False
     else:
         os.mkdir(directory)
+        return True
 
 
 def write_hyperparameters(directory_path, data: dict):
@@ -56,9 +57,12 @@ def write_hyperparameters(directory_path, data: dict):
         outfile.write(json_object)
 
 
-def get_id(base_name: str):
+def create_dir_with_id(base_name: str):
     """Base folder name for model training"""
-    num_id = os.listdir(base_name) + 1
+    num_id = len(glob(os.path.join(base_name, "*")))
+
+    while not check_directory_exists(f"{base_name}_{num_id}"):
+        num_id += 1
 
     return num_id
 

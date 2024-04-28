@@ -1,5 +1,5 @@
 from argparse import ArgumentParser, Namespace
-import train
+from train import total_train_procedure
 
 
 def main():
@@ -55,22 +55,28 @@ def main():
     starting_lr = args.startlr
     load_model = args.load
 
-    print(rot)
-    return
-
     if mixed_precision == "normal":
         mixed_precision_boolean = False
     else:
         mixed_precision_boolean = True
 
-    dataset_information = get_dataset(dataset_name=dataset_name)
-
-    if rot:
-        batch_size = None
-        train.total_train_procedure(model_name=model_name, dataset_information=dataset_information,
-                                    loss_fn_name=loss_fn_name, num_epochs=num_epochs, batch_size=batch_size, optimizer_name=optimizer_name, num_classes=num_classes, image_size=image_size, load_model=load_model, starting_epoch=starting_epoch,
-                                    starting_lr=starting_lr
-                                    )
+    # call main training function
+    total_train_procedure(
+        model_name=model_name,
+        dataset_name=dataset_name,
+        optimizer_name=optimizer_name,
+        loss_fn_name=loss_fn_name,
+        num_epochs=num_epochs,
+        batch_size=batch_size,
+        num_workers=num_workers,
+        num_classes=num_classes,
+        image_size=image_size,
+        rotatory=rot,
+        mixed_precision=mixed_precision_boolean,
+        load_model=load_model,
+        starting_epoch=starting_epoch,
+        starting_lr=starting_lr
+    )
 
 
 if __name__ == "__main__":

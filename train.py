@@ -1,13 +1,13 @@
 import time
-from glob import glob
+import os
 import torch
-from utils import seconds_to_hms, write_csv, write_hyperparameters, set_seeds, get_id, get_device, rename_str_dir
+from utils import seconds_to_hms, write_csv, write_hyperparameters, set_seeds, create_dir_with_id, get_device, rename_str_dir, check_directory_exists
 from train_support import get_loss_fn, get_optimziers, get_models
 from training_procedures import rotatory_evaluate, rotatory_train, normal_evaluate, normal_train
 from dataset_support import get_dataset
 
 
-def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name, num_epochs, batch_size, optimizer, num_workers=6, num_classes=8, image_size=256, rotatory=True, mixed_precision=False, load_model=False, starting_epoch=0, starting_lr=1e-3):
+def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name, num_epochs, batch_size, num_workers=6, num_classes=8, image_size=256, rotatory=True, mixed_precision=False, load_model=False, starting_epoch=0, starting_lr=1e-3):
 
     set_seeds()
 
@@ -18,17 +18,20 @@ def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name
 
     """Define paths using templates"""
     # get base folder name without id
-    base_name = f"./storage/{model_name}_optim-{optimizer_name}-{image_size}"
+    base_name = f"./storage/{model_name}_optim-{optimizer_name}_image-{image_size}_lr-{starting_lr}"
     # rename_str_dir(base_name=base_name)
 
     # get id and define path
-    num_id = get_id(base_name=base_name)
+    num_id = create_dir_with_id(base_name=base_name)
     directory_path = f"{base_name}_{num_id}"
 
+    # check if num_id is valid & create directory
+    check_directory_exists(directory_path)
+
     # define path for checkpoint files
-    train_metrics_path = f"{directory_path}_train_metrics.csv"
-    test_metrics_path = f"{directory_path}_test_metrics.csv"
-    checkpoint_path = f"{directory_path}_checkpoint.pth.tar"
+    train_metrics_path = os.path.join(directory_path, "train_metrics.csv")
+    test_metrics_path = os.path.join(directory_path, "test_metrics.csv")
+    checkpoint_path = os.path.join(directory_path, "checkpoint.pth.tar")
 
     """Write params to file"""
     write_hyperparameters(directory_path, data={
@@ -82,6 +85,8 @@ def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name
     ############################################################################################################
     ############################################################################################################
     ############################################################################################################
+
+    print(rotatory)
 
     for epoch in range(starting_epoch, num_epochs, 1):
         start_time = time.time()

@@ -32,7 +32,7 @@ def normal_train(model, loader, optimizer, loss_fn, num_classes, scaler, device=
         # forward:
         y_pred = model(x)
 
-        y = nn.functional.one_hot(y.long(), num_classes=8)
+        y = nn.functional.one_hot(y.long(), num_classes=num_classes)
         y = torch.squeeze(y, dim=1)
         y = y.permute(0, 3, 1, 2)
 
@@ -112,7 +112,7 @@ def normal_evaluate(model, loader, loss_fn, num_classes, scaler, device=torch.de
             y_pred = model(x)
 
             y = torch.squeeze(y, dim=1)
-            y = nn.functional.one_hot(y.long(), num_classes=8)
+            y = nn.functional.one_hot(y.long(), num_classes=num_classes)
             y = y.permute(0, 3, 1, 2)
 
             """Calculate loss"""
@@ -226,7 +226,7 @@ def rotatory_train(model, loader, optimizer, loss_fn, num_classes, scaler, batch
 
             """Update batch metrics"""
             batch_dice_coef = multiclass_dice_score(
-                y=y, y_pred=y_pred, num_classes=num_classes)
+                y=y_, y_pred=y_pred, num_classes=num_classes)
 
             batch_accuracy = accuracy_score(
                 y_.flatten(), y_pred.flatten())

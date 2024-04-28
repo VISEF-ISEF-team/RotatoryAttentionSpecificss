@@ -1,15 +1,16 @@
 import numpy as np
+import torch
 
 
 def dice_score(y, y_pred):
-    intersection = y * y_pred
+    intersection = np.sum(y * y_pred)
     smooth = 1e-7
     dice = (2. * intersection + smooth) / (y.sum() + y_pred.sum() + smooth)
 
     return dice
 
 
-def multiclass_dice_score(y, y_pred, num_classes, class_weights=None):
+def multiclass_dice_score(y: np.ndarray, y_pred: np.ndarray, num_classes, class_weights=None):
     if class_weights != None:
         assert len(class_weights) == num_classes, print(
             f"Class weights has length: {len(class_weights)} not equal to number of classes: {num_classes}")

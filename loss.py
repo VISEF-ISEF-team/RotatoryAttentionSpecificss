@@ -14,6 +14,7 @@ def torch_dice_score(inputs, targets, smooth=1e-7):
 class CustomDiceLoss(nn.Module):
     def __init__(self, weight=None, size_average=True):
         super(CustomDiceLoss, self).__init__()
+        self.score = torch_dice_score
 
     def forward(self, inputs, targets, smooth=1e-7):
 
@@ -24,7 +25,7 @@ class CustomDiceLoss(nn.Module):
         inputs = inputs.contiguous().view(-1)
         targets = targets.contiguous().view(-1)
 
-        dsc = torch_dice_score(inputs, targets)
+        dsc = self.score(inputs, targets)
 
         return 1.0 - dsc
 
@@ -33,12 +34,18 @@ class MulticlassDiceLoss(nn.Module):
     def __init__(self, weight: list = None):
         super().__init__()
         self.weight = weight
+        self.score = torch_dice_score
 
     def forward(self, inputs, targets, smooth=1e-7):
         num_classes = inputs.shape[1]
 
+        print(f"Num classes: {num_classes}")
+
         inputs_maxed = inputs.argmax(dim=1)
         targets_maxed = targets.argmax(dim=1)
+
+        print(
+            f"Input shape: {inputs_maxed.shape} || Targets shape: {targets_maxed.shape}")
 
         if self.weight != None:
             assert num_classes == len(self.weight), print(
@@ -48,10 +55,12 @@ class MulticlassDiceLoss(nn.Module):
             total_dice_score = 0.0
 
             for i in range(num_classes):
-                y_bin = torch.where(inputs_maxed == i, 1.0, 0.0)
-                y_pred_bin = torch.where(targets_maxed == i, 1.0, 0.0)
+                y_bin = torch.where(inputs_maxed == i, 1.0,
+                                    0.0).requires_grad_()
+                y_pred_bin = torch.where(
+                    targets_maxed == i, 1.0, 0.0).requires_grad_()
 
-                dsc = torch_dice_score(y_pred_bin, y_bin) * self.weight[i]
+                dsc = self.score(y_pred_bin, y_bin) * self.weight[i]
 
                 total_dice_score += dsc
 
@@ -61,8 +70,10 @@ class MulticlassDiceLoss(nn.Module):
             total_dice_score = 0.0
 
             for i in range(num_classes):
-                y_bin = torch.where(inputs_maxed == i, 1.0, 0.0)
-                y_pred_bin = torch.where(targets_maxed == i, 1.0, 0.0)
+                y_bin = torch.where(inputs_maxed == i, 1.0,
+                                    0.0).requires_grad_()
+                y_pred_bin = torch.where(
+                    targets_maxed == i, 1.0, 0.0).requires_grad_()
 
                 dsc = torch_dice_score(y_pred_bin, y_bin)
 
