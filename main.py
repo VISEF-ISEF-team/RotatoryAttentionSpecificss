@@ -1,8 +1,5 @@
 from argparse import ArgumentParser, Namespace
 import train
-import normal_train
-from train_support import get_dataset
-# model_name, root_images_path, root_labels_path, loss_fn_name, num_epochs, num_workers, batch_size, optimizer_name, checkpoint_path, num_classes=8, image_size=256, num_id=0, mixed_precision=False, load_model=False, starting_epoch=0, starting_lr=1e-3
 
 
 def main():
@@ -16,14 +13,15 @@ def main():
 
     # loss
     parser.add_argument(
-        "-l", "--loss", choices=["dice", "tversky", "focal"], default="dice", required=True)
+        "-l", "--loss", choices=["dice", "multi_dice", "tversky", "focal"], default="dice", required=True)
 
     # optimizer
     parser.add_argument(
         "--optim", choices=["adam", "adamw"], default="adam", required=True)
 
-    # paths
-    parser.add_argument("--dataset", type=str, required=True, default="MMWHS")
+    # dataset name
+    parser.add_argument(
+        "--dataset", choices=["MMWHS", "CHD", "VHSCDD"], required=True, default="MMWHS")
 
     # training related param
     parser.add_argument("--epochs", type=int, default=25, required=True)
@@ -56,6 +54,9 @@ def main():
     starting_epoch = args.startepoch
     starting_lr = args.startlr
     load_model = args.load
+
+    print(rot)
+    return
 
     if mixed_precision == "normal":
         mixed_precision_boolean = False

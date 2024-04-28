@@ -49,15 +49,14 @@ def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name
                            num_classes=num_classes, image_size=image_size)
         model.load_state_dict(checkpoint)
         model.to(device)
-
     else:
         model = get_models(model_name=model_name,
                            num_classes=num_classes, image_size=image_size)
         model.to(device)
 
     """Define optimizer and scheduler"""
-    # optimizer = get_optimziers(
-    #     optimizer_name=optimizer_name, parameters=model.parameters(), learning_rate=lr)
+    optimizer = get_optimziers(
+        optimizer_name=optimizer_name, parameters=model.parameters(), learning_rate=lr)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
         optimizer=optimizer, mode="min", factor=0.5, patience=3)
 
@@ -92,19 +91,19 @@ def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name
         if rotatory:
             # train function
             train_loss, train_dice_coef, train_accuracy, train_jaccard, train_recall, train_f1 = rotatory_train(
-                model, train_loader, optimizer, loss_fn, scaler, batch_size, device)
+                model, train_loader, optimizer, loss_fn, num_classes, scaler, batch_size, device)
 
             # validate function
             valid_loss, valid_f1, valid_accuracy, valid_recall, valid_jaccard, valid_dice_coef = rotatory_evaluate(
-                model, val_loader, loss_fn, batch_size, device)
+                model, val_loader, loss_fn, batch_size, num_classes, device)
         else:
             # train function
             train_loss, train_dice_coef, train_accuracy, train_jaccard, train_recall, train_f1 = normal_train(
-                model, train_loader, optimizer, loss_fn, scaler, batch_size, device)
+                model, train_loader, optimizer, loss_fn, num_classes, scaler, batch_size, device)
 
             # validate function
             valid_loss, valid_f1, valid_accuracy, valid_recall, valid_jaccard, valid_dice_coef = normal_evaluate(
-                model, val_loader, loss_fn, batch_size, device)
+                model, val_loader, loss_fn, num_classes, scaler, device)
 
         """WRite to CSV"""
         # write to train

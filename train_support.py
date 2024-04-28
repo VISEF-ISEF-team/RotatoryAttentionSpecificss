@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 from skimage.transform import resize
 import torch.nn.functional as F
-from loss import CustomDiceLoss
+from loss import CustomDiceLoss, MulticlassDiceLoss
 from networks.original_unet_attention import Attention_Unet
 from networks.rotatory_attention_unet import Rotatory_Attention_Unet
 from networks.rotatory_attention_unet_v2 import Rotatory_Attention_Unet_v2
@@ -27,8 +27,10 @@ def get_optimziers(optimizer_name, parameters, learning_rate):
 def get_loss_fn(loss_fn_name):
     if loss_fn_name == "dice":
         loss = CustomDiceLoss()
-    else:
-        loss = CustomDiceLoss()
+    elif loss_fn_name == "multi_dice":
+        weights = None
+        loss = MulticlassDiceLoss(weight=weights)
+
     return loss
 
 

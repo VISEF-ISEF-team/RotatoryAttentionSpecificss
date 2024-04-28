@@ -1,9 +1,1 @@
-get_loaders(
-        root_images=root_images_path, root_labels=root_labels_path, batch_size=batch_size, num_workers=num_workers, image_extension=image_extension, mask_extension=mask_extension)
-
-
-root_images_path, root_labels_path, image_extension, mask_extension = dataset_information
-
-
-main will be where all the argument parsing happens 
-then everything will be passed to train to load optimizer, model, paths, 
+python .\main.py -r --model unet_attention --loss multi_dice --optim adam --dataset MMWHS --epochs 2 --workers 6 --batch 2 --classes 8 --size 256 --startepoch 0 --startlr 0.01  

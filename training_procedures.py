@@ -6,9 +6,11 @@ from monai.losses import DiceLoss, TverskyLoss
 from sklearn.metrics import accuracy_score, f1_score, jaccard_score, recall_score
 import pandas as pd
 from train_support import duplicate_open_end, get_slice_from_volumetric_data, duplicate_end
+from metrics import multiclass_dice_score
+import numpy as np
 
 
-def normal_train(model, loader, optimizer, loss_fn, scaler, device=torch.device("cuda")):
+def normal_train(model, loader, optimizer, loss_fn, num_classes, scaler, device=torch.device("cuda")):
     model.train()
     pbar = tqdm(loader)
     total_steps = len(loader)
@@ -45,12 +47,14 @@ def normal_train(model, loader, optimizer, loss_fn, scaler, device=torch.device(
 
         """Take argmax for accuracy calculation"""
         y_pred = torch.argmax(y_pred, dim=1)
-        y_pred = y_pred.detach().cpu().numpy()
-
         y = torch.argmax(y, dim=1)
+        y_pred = y_pred.detach().cpu().numpy()
         y = y.detach().cpu().numpy()
 
         """Update batch metrics"""
+        batch_dice_coef = multiclass_dice_score(
+            y=y, y_pred=y_pred, num_classes=num_classes)
+
         batch_accuracy = accuracy_score(
             y.flatten(), y_pred.flatten())
 
@@ -64,7 +68,6 @@ def normal_train(model, loader, optimizer, loss_fn, scaler, device=torch.device(
                             y_pred.flatten(), average="micro")
 
         batch_loss = loss.item()
-        batch_dice_coef = 1.0 - batch_loss
 
         """Update epoch metrics"""
         epoch_loss += batch_loss
@@ -72,13 +75,14 @@ def normal_train(model, loader, optimizer, loss_fn, scaler, device=torch.device(
         epoch_jaccard += batch_jaccard
         epoch_recall += batch_recall
         epoch_f1 += batch_f1
+        epoch_dice_coef += batch_dice_coef
 
         """Set loop postfix"""
         pbar.set_postfix(
             {"loss": batch_loss, "dice_coef": batch_dice_coef, "accuracy": batch_accuracy, "iou": batch_jaccard})
 
     epoch_loss = epoch_loss / total_steps
-    epoch_dice_coef = 1.0 - epoch_loss
+    epoch_dice_coef = epoch_dice_coef / total_steps
     epoch_accuracy = epoch_accuracy / total_steps
     epoch_jaccard = epoch_jaccard / total_steps
     epoch_recall = epoch_recall / total_steps
@@ -87,7 +91,7 @@ def normal_train(model, loader, optimizer, loss_fn, scaler, device=torch.device(
     return epoch_loss, epoch_dice_coef, epoch_accuracy, epoch_jaccard, epoch_recall, epoch_f1
 
 
-def normal_evaluate(model, loader, loss_fn, scaler, device=torch.device("cuda")):
+def normal_evaluate(model, loader, loss_fn, num_classes, scaler, device=torch.device("cuda")):
     model.eval()
     pbar = tqdm(loader)
     total_steps = len(loader)
@@ -114,15 +118,15 @@ def normal_evaluate(model, loader, loss_fn, scaler, device=torch.device("cuda"))
             """Calculate loss"""
             loss = loss_fn(y_pred, y)
 
-            """Take argmax to calculate other metrices"""
+            """Convert to numpy for metrics calculation"""
             y_pred = torch.argmax(y_pred, dim=1)
             y = torch.argmax(y, dim=1)
-
-            """Convert to numpy for metrics calculation"""
             y_pred = y_pred.detach().cpu().numpy()
             y = y.detach().cpu().numpy()
 
             """Batch metrics calculation"""
+            batch_dice_coef = multiclass_dice_score(
+                y=y, y_pred=y_pred, num_classes=num_classes)
             batch_loss = loss.item()
             batch_f1 = f1_score(y.flatten(),
                                 y_pred.flatten(), average="micro")
@@ -132,7 +136,6 @@ def normal_evaluate(model, loader, loss_fn, scaler, device=torch.device("cuda"))
                 y.flatten(), y_pred.flatten(), average="micro")
             batch_jaccard = jaccard_score(
                 y.flatten(), y_pred.flatten(), average="micro")
-            batch_dice_coef = 1.0 - batch_loss
 
             """Epoch metrics calculation"""
             epoch_loss += batch_loss
@@ -140,6 +143,7 @@ def normal_evaluate(model, loader, loss_fn, scaler, device=torch.device("cuda"))
             epoch_accuracy += batch_accuracy
             epoch_recall += batch_recall
             epoch_jaccard += batch_jaccard
+            epoch_dice_coef += batch_dice_coef
 
             pbar.set_postfix(
                 {"loss": batch_loss, "dice_coef": batch_dice_coef, "accuracy": batch_accuracy, "iou": batch_jaccard})
@@ -149,12 +153,12 @@ def normal_evaluate(model, loader, loss_fn, scaler, device=torch.device("cuda"))
     epoch_accuracy = epoch_accuracy / total_steps
     epoch_recall = epoch_recall / total_steps
     epoch_jaccard = epoch_jaccard / total_steps
-    epoch_dice_coef = 1.0 - epoch_loss
+    epoch_dice_coef = epoch_dice_coef / total_steps
 
     return epoch_loss, epoch_f1, epoch_accuracy, epoch_recall, epoch_jaccard, epoch_dice_coef
 
 
-def rotatory_train(model, loader, optimizer, loss_fn, scaler, batch_size, device=torch.device("cuda")):
+def rotatory_train(model, loader, optimizer, loss_fn, num_classes, scaler, batch_size, device=torch.device("cuda")):
     model.train()
     pbar = tqdm(loader)
     steps = len(loader)
@@ -200,10 +204,8 @@ def rotatory_train(model, loader, optimizer, loss_fn, scaler, batch_size, device
 
             # forward:
             y_pred = model(x_)
-            # y_pred = y_pred[1:-1]
-            # y_ = y_[1:-1]
 
-            y_ = nn.functional.one_hot(y_.long(), num_classes=8)
+            y_ = nn.functional.one_hot(y_.long(), num_classes=num_classes)
             y_ = torch.squeeze(y_, dim=1)
             y_ = y_.permute(0, 3, 1, 2)
 
@@ -216,14 +218,16 @@ def rotatory_train(model, loader, optimizer, loss_fn, scaler, batch_size, device
             # scaler.step(optimizer)
             # scaler.update()
 
-            """Take argmax for accuracy calculation"""
+            """Detach and convert to numpy array"""
             y_pred = torch.argmax(y_pred, dim=1)
-            y_pred = y_pred.detach().cpu().numpy()
-
             y_ = torch.argmax(y_, dim=1)
+            y_pred = y_pred.detach().cpu().numpy()
             y_ = y_.detach().cpu().numpy()
 
             """Update batch metrics"""
+            batch_dice_coef = multiclass_dice_score(
+                y=y, y_pred=y_pred, num_classes=num_classes)
+
             batch_accuracy = accuracy_score(
                 y_.flatten(), y_pred.flatten())
 
@@ -237,7 +241,6 @@ def rotatory_train(model, loader, optimizer, loss_fn, scaler, batch_size, device
                                 y_pred.flatten(), average="micro")
 
             batch_loss = loss.item()
-            batch_dice_coef = 1.0 - batch_loss
 
             """Update epoch metrics"""
             epoch_loss += batch_loss
@@ -245,13 +248,14 @@ def rotatory_train(model, loader, optimizer, loss_fn, scaler, batch_size, device
             epoch_jaccard += batch_jaccard
             epoch_recall += batch_recall
             epoch_f1 += batch_f1
+            epoch_dice_coef += batch_dice_coef
 
             """Set loop postfix"""
             pbar.set_postfix(
                 {"loss": batch_loss, "dice_coef": batch_dice_coef, "accuracy": batch_accuracy, "iou": batch_jaccard})
 
     epoch_loss = epoch_loss / iter_counter
-    epoch_dice_coef = 1.0 - epoch_loss
+    epoch_dice_coef = epoch_dice_coef / iter_counter
     epoch_accuracy = epoch_accuracy / iter_counter
     epoch_jaccard = epoch_jaccard / iter_counter
     epoch_recall = epoch_recall / iter_counter
@@ -260,7 +264,7 @@ def rotatory_train(model, loader, optimizer, loss_fn, scaler, batch_size, device
     return epoch_loss, epoch_dice_coef, epoch_accuracy, epoch_jaccard, epoch_recall, epoch_f1
 
 
-def rotatory_evaluate(model, loader, loss_fn, batch_size, device=torch.device("cuda")):
+def rotatory_evaluate(model, loader, loss_fn, batch_size, num_classes, device=torch.device("cuda")):
 
     epoch_loss = 0.0
     epoch_f1 = 0.0
@@ -301,9 +305,7 @@ def rotatory_evaluate(model, loader, loss_fn, batch_size, device=torch.device("c
 
                 # pass input through model
                 y_pred = model(x_)
-                # y_pred = y_pred[1:-1]
 
-                # y_ = y_[1:-1]
                 y_ = torch.squeeze(y_, dim=1)
                 y_ = nn.functional.one_hot(y_.long(), num_classes=8)
                 y_ = y_.permute(0, 3, 1, 2)
@@ -312,15 +314,15 @@ def rotatory_evaluate(model, loader, loss_fn, batch_size, device=torch.device("c
                 loss = loss_fn(y_pred, y_)
                 epoch_loss += loss.item()
 
-                # take argmax to calculate other metrices
+                # argmax & convert to numpy to calculate metrics
                 y_pred = torch.argmax(y_pred, dim=1)
                 y_ = torch.argmax(y_, dim=1)
-
-                # convert to numpy to calculate metrics
                 y_pred = y_pred.detach().cpu().numpy()
                 y_ = y_.detach().cpu().numpy()
 
-                # other metrics calculation
+                # batch metrics calculation
+                batch_dice_coef = multiclass_dice_score(
+                    y=y, y_pred=y_pred, num_classes=num_classes)
                 epoch_f1 += f1_score(y_.flatten(),
                                      y_pred.flatten(), average="micro")
                 epoch_accuracy += accuracy_score(
@@ -335,6 +337,6 @@ def rotatory_evaluate(model, loader, loss_fn, batch_size, device=torch.device("c
         epoch_accuracy = epoch_accuracy / iter_counter
         epoch_recall = epoch_recall / iter_counter
         epoch_jaccard = epoch_jaccard / iter_counter
-        epoch_dice_coef = 1.0 - epoch_loss
+        epoch_dice_coef = epoch_dice_coef / iter_counter
 
     return epoch_loss, epoch_f1, epoch_accuracy, epoch_recall, epoch_jaccard, epoch_dice_coef
