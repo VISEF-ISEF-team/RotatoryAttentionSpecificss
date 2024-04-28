@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from LinearRotatoryAttention import LinearRotatoryAttentionModule
+from .LinearRotatoryAttention import LinearRotatoryAttentionModule
 
 
 class conv_block(nn.Module):

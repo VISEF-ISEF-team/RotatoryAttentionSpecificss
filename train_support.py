@@ -1,6 +1,10 @@
 import torch
 import torch.nn as nn
 import os
+import cv2
+import numpy as np
+from skimage.transform import resize
+import torch.nn.functional as F
 from loss import CustomDiceLoss
 from networks.original_unet_attention import Attention_Unet
 from networks.rotatory_attention_unet import Rotatory_Attention_Unet
@@ -13,7 +17,7 @@ def get_optimziers(optimizer_name, parameters, learning_rate):
     if optimizer_name == "adam":
         optimizer = torch.optim.Adam(params=parameters, lr=learning_rate)
     elif optimizer_name == "adamw":
-        optimzier = torch.optim.AdamW(params=parameters, lr=learning_rate)
+        optimizer = torch.optim.AdamW(params=parameters, lr=learning_rate)
     else:
         optimizer = torch.optim.Adam(params=parameters, lr=learning_rate)
 
@@ -44,21 +48,63 @@ def get_models(model_name, num_classes=8, image_size=128):
     return model
 
 
-def get_dataset(dataset_name, rot):
-    if dataset_name == "MMWHS":
-        if rot:
-            root = "../Triple-View-R-Net/data_for_training/MMWHS/"
+def normalize_image_intensity_range(img):
+    HOUNSFIELD_MAX = np.max(img)
+    HOUNSFIELD_MIN = np.min(img)
+    HOUNSFIELD_RANGE = HOUNSFIELD_MAX - HOUNSFIELD_MIN
 
-            root_images = os.path.join(root, "ct_train", "images")
-            root_masks = os.path.join(root, "ct_train", "masks")
+    img[img < HOUNSFIELD_MIN] = HOUNSFIELD_MIN
+    img[img > HOUNSFIELD_MAX] = HOUNSFIELD_MAX
 
-            image_extension = "*.nii.gz"
-            mask_extension = "*.nii.gz"
+    return (img - HOUNSFIELD_MIN) / HOUNSFIELD_RANGE
 
-        else:
-            root_images = "../Triple-View R-Net/data_for_training/MMWHS/images/"
-            root_masks = "../Triple-View R-Net/data_for_training/MMWHS/masks/"
-            image_extension = "*.png"
-            mask_extension = "*.npy"
 
-    return root_images, root_masks, image_extension, mask_extension
+def get_slice_from_volumetric_data(image_volume, mask_volume, start_idx, num_slice=12, train_transform=None, val_transform=None):
+
+    end_idx = start_idx + num_slice
+
+    images = torch.empty(num_slice, 1, 256, 256)
+    masks = torch.empty(num_slice, 1, 256, 256)
+
+    for i in range(start_idx, end_idx, 1):
+        image = image_volume[:, :, i].numpy()
+        image = cv2.resize(image, (256, 256))
+        image = normalize_image_intensity_range(image).astype(np.float32)
+        image = np.expand_dims(image, axis=0)
+        image = torch.from_numpy(image)
+
+        if train_transform != None:
+            image = train_transform(image)
+
+        if val_transform != None:
+            image = val_transform(image)
+
+        images[i - start_idx, :, :, :] = image
+
+        mask = mask_volume[:, :, i].long()
+        mask = F.one_hot(mask, num_classes=8)
+        mask = mask.numpy()
+        mask = resize(mask, (256, 256, 8),
+                      preserve_range=True, anti_aliasing=True)
+        mask = torch.from_numpy(mask)
+        mask = torch.argmax(mask, dim=-1)
+        mask = torch.unsqueeze(mask, dim=0)
+
+        masks[i - start_idx, :, :, :] = mask
+
+    return images, masks
+
+
+def duplicate_open_end(x):
+    first_slice = x[:, :, 0].unsqueeze(2)
+    last_slice = x[:, :, -1].unsqueeze(2)
+    x = torch.cat((first_slice, x, last_slice), dim=2)
+
+    return x
+
+
+def duplicate_end(x):
+    last_slice = x[:, :, -1].unsqueeze(2)
+    x = torch.cat((x, last_slice), dim=2)
+
+    return x

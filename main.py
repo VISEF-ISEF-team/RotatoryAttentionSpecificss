@@ -1,5 +1,5 @@
 from argparse import ArgumentParser, Namespace
-import rotatory_train
+import train
 import normal_train
 from train_support import get_dataset
 # model_name, root_images_path, root_labels_path, loss_fn_name, num_epochs, num_workers, batch_size, optimizer_name, checkpoint_path, num_classes=8, image_size=256, num_id=0, mixed_precision=False, load_model=False, starting_epoch=0, starting_lr=1e-3
@@ -26,7 +26,6 @@ def main():
     parser.add_argument("--dataset", type=str, required=True, default="MMWHS")
 
     # training related param
-    parser.add_argument("--id", type=int, default=0, required=True)
     parser.add_argument("--epochs", type=int, default=25, required=True)
     parser.add_argument("--workers", type=int, default=6)
     parser.add_argument("--batch", type=int, default=8)
@@ -54,7 +53,6 @@ def main():
     num_classes = args.classes
     image_size = args.size
     mixed_precision = args.precision
-    num_id = args.id
     starting_epoch = args.startepoch
     starting_lr = args.startlr
     load_model = args.load
@@ -68,35 +66,10 @@ def main():
 
     if rot:
         batch_size = None
-        rotatory_train.total_train_procedure(model_name=model_name,
-                                             dataset_information=dataset_information,
-                                             loss_fn_name=loss_fn_name,
-                                             num_epochs=num_epochs,
-                                             num_workers=num_workers,
-                                             batch_size=batch_size,
-                                             optimizer_name=optimizer_name,
-                                             num_classes=num_classes,
-                                             image_size=image_size,
-                                             num_id=num_id,
-                                             mixed_precision=mixed_precision_boolean,
-                                             load_model=load_model,
-                                             starting_epoch=starting_epoch,
-                                             starting_lr=starting_lr)
-    else:
-        normal_train.total_train_procedure(model_name=model_name,
-                                           dataset_information=dataset_information,
-                                           loss_fn_name=loss_fn_name,
-                                           num_epochs=num_epochs,
-                                           num_workers=num_workers,
-                                           batch_size=batch_size,
-                                           optimizer_name=optimizer_name,
-                                           num_classes=num_classes,
-                                           image_size=image_size,
-                                           num_id=num_id,
-                                           mixed_precision=mixed_precision_boolean,
-                                           load_model=load_model,
-                                           starting_epoch=starting_epoch,
-                                           starting_lr=starting_lr)
+        train.total_train_procedure(model_name=model_name, dataset_information=dataset_information,
+                                    loss_fn_name=loss_fn_name, num_epochs=num_epochs, batch_size=batch_size, optimizer_name=optimizer_name, num_classes=num_classes, image_size=image_size, load_model=load_model, starting_epoch=starting_epoch,
+                                    starting_lr=starting_lr
+                                    )
 
 
 if __name__ == "__main__":

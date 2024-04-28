@@ -7,6 +7,8 @@ from skimage.transform import resize
 import os
 import torch.nn.functional as F
 import random
+import json
+from glob import glob
 
 
 def set_seeds():
@@ -39,57 +41,6 @@ def write_csv(path, data, first=False):
         file.close()
 
 
-def get_slice_from_volumetric_data(image_volume, mask_volume, start_idx, num_slice=12, train_transform=None, val_transform=None):
-
-    end_idx = start_idx + num_slice
-
-    images = torch.empty(num_slice, 1, 256, 256)
-    masks = torch.empty(num_slice, 1, 256, 256)
-
-    for i in range(start_idx, end_idx, 1):
-        image = image_volume[:, :, i].numpy()
-        image = cv2.resize(image, (256, 256))
-        image = image.astype(np.uint8)
-        image = np.expand_dims(image, axis=0)
-        image = torch.from_numpy(image)
-
-        if train_transform != None:
-            image = train_transform(image)
-
-        elif val_transform != None:
-            image = val_transform(image)
-
-        images[i - start_idx, :, :, :] = image
-
-        mask = mask_volume[:, :, i].long()
-        mask = F.one_hot(mask, num_classes=8)
-        mask = mask.numpy()
-        mask = resize(mask, (256, 256, 8),
-                      preserve_range=True, anti_aliasing=True)
-        mask = torch.from_numpy(mask)
-        mask = torch.argmax(mask, dim=-1)
-        mask = torch.unsqueeze(mask, dim=0)
-
-        masks[i - start_idx, :, :, :] = mask
-
-    return images, masks
-
-
-def duplicate_open_end(x):
-    first_slice = x[:, :, 0].unsqueeze(2)
-    last_slice = x[:, :, -1].unsqueeze(2)
-    x = torch.cat((first_slice, x, last_slice), dim=2)
-
-    return x
-
-
-def duplicate_end(x):
-    last_slice = x[:, :, -1].unsqueeze(2)
-    x = torch.cat((x, last_slice), dim=2)
-
-    return x
-
-
 def check_directory_exists(directory):
     if os.path.isdir(directory):
         return
@@ -98,6 +49,32 @@ def check_directory_exists(directory):
 
 
 def write_hyperparameters(directory_path, data: dict):
-    with open(os.path.join(directory_path, "parameters_log.txt")) as f:
-        for key, value in data.items():
-            f.write(f"{key}: {data}\n")
+    fullpath = os.path.join(directory_path, "hyperparameters_log.json")
+    json_object = json.dumps(data, indent=4)
+
+    with open(fullpath, "w") as outfile:
+        outfile.write(json_object)
+
+
+def get_id(base_name: str):
+    """Base folder name for model training"""
+    num_id = os.listdir(base_name) + 1
+
+    return num_id
+
+
+def rename_str_dir(base_name):
+    dir_list = glob(os.path.join(base_name, "*"))
+
+    for i, dir in enumerate(dir_list):
+        # name: model_name_asd;fla;lsdkf_id
+        new_name = dir[:-2] + f"_{str(i)}"
+
+        os.rename(dir, new_name)
+
+
+def get_device():
+    device = torch.device(
+        "cuda") if torch.cuda.is_available() else torch.device("cpu")
+
+    return device
