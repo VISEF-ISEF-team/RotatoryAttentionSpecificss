@@ -176,7 +176,7 @@ def rotatory_train(model, loader, optimizer, loss_fn, num_classes, scaler, batch
 
         length = x.shape[-1]
 
-        for i in range(0, length, batch_size - 1):
+        for i in range(0, length, batch_size):
             pbar.set_description(
                 f"Iter: {iter_counter} - Step: {step} / {steps}")
             iter_counter += 1
@@ -282,7 +282,7 @@ def rotatory_evaluate(model, loader, loss_fn, batch_size, num_classes, device=to
 
             length = x.shape[-1]
 
-            for i in range(0, length, batch_size - 1):
+            for i in range(0, length, batch_size):
                 iter_counter += 1
 
                 # ensure balance slice count
@@ -321,8 +321,8 @@ def rotatory_evaluate(model, loader, loss_fn, batch_size, num_classes, device=to
                 y_ = y_.detach().cpu().numpy()
 
                 # batch metrics calculation
-                batch_dice_coef = multiclass_dice_score(
-                    y=y, y_pred=y_pred, num_classes=num_classes)
+                epoch_dice_coef += multiclass_dice_score(
+                    y=y_, y_pred=y_pred, num_classes=num_classes)
                 epoch_f1 += f1_score(y_.flatten(),
                                      y_pred.flatten(), average="micro")
                 epoch_accuracy += accuracy_score(

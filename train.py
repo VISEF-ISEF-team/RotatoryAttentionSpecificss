@@ -86,8 +86,6 @@ def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name
     ############################################################################################################
     ############################################################################################################
 
-    print(rotatory)
-
     for epoch in range(starting_epoch, num_epochs, 1):
         start_time = time.time()
 

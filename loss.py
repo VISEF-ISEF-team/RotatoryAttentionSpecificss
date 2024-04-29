@@ -3,31 +3,12 @@ import torch.nn as nn
 import numpy as np
 
 
-def torch_dice_score(inputs, targets, smooth=1e-7):
+def torch_dice_score(inputs, targets, smooth=1):
     intersection = (inputs * targets).sum()
     dice = (2.*intersection + smooth) / \
         (inputs.sum() + targets.sum() + smooth)
 
     return dice
-
-
-class CustomDiceLoss(nn.Module):
-    def __init__(self, weight=None, size_average=True):
-        super(CustomDiceLoss, self).__init__()
-        self.score = torch_dice_score
-
-    def forward(self, inputs, targets, smooth=1e-7):
-
-        # comment out if your model contains a sigmoid or equivalent activation layer
-        inputs = torch.softmax(inputs, dim=1)
-
-        # flatten label and prediction tensors
-        inputs = inputs.contiguous().view(-1)
-        targets = targets.contiguous().view(-1)
-
-        dsc = self.score(inputs, targets)
-
-        return 1.0 - dsc
 
 
 class MulticlassDiceLoss(nn.Module):
@@ -39,13 +20,8 @@ class MulticlassDiceLoss(nn.Module):
     def forward(self, inputs, targets, smooth=1e-7):
         num_classes = inputs.shape[1]
 
-        print(f"Num classes: {num_classes}")
-
         inputs_maxed = inputs.argmax(dim=1)
         targets_maxed = targets.argmax(dim=1)
-
-        print(
-            f"Input shape: {inputs_maxed.shape} || Targets shape: {targets_maxed.shape}")
 
         if self.weight != None:
             assert num_classes == len(self.weight), print(
@@ -64,7 +40,7 @@ class MulticlassDiceLoss(nn.Module):
 
                 total_dice_score += dsc
 
-            return total_dice_score / total_weights
+            return 1.0 - (total_dice_score / total_weights)
 
         else:
             total_dice_score = 0.0
@@ -79,7 +55,26 @@ class MulticlassDiceLoss(nn.Module):
 
                 total_dice_score += dsc
 
-            return total_dice_score / num_classes
+            return 1.0 - (total_dice_score / num_classes)
+
+
+class CustomDiceLoss(nn.Module):
+    def __init__(self, weight=None, size_average=True):
+        super(CustomDiceLoss, self).__init__()
+        self.score = torch_dice_score
+
+    def forward(self, inputs, targets, smooth=1):
+
+        # comment out if your model contains a sigmoid or equivalent activation layer
+        inputs = torch.softmax(inputs, dim=1)
+
+        # flatten label and prediction tensors
+        inputs = inputs.contiguous().view(-1)
+        targets = targets.contiguous().view(-1)
+
+        dsc = self.score(inputs, targets)
+
+        return 1.0 - dsc
 
 
 if __name__ == "__main__":

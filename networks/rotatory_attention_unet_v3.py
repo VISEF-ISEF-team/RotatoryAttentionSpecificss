@@ -90,7 +90,7 @@ class Rotatory_Attention_Unet_v3(nn.Module):
         self.rot_inc = 512
 
         self.rag = LinearRotatoryAttentionModule(
-            self.flattened_dim, 512, self.flattened_dim, 512,  self.flattened_dim, 512, 768, self.flattened_dim // 4, 768, self.flattened_dim // 4, 768, self.flattened_dim // 4)
+            self.flattened_dim, 512, self.flattened_dim, 512,  self.flattened_dim, 512, 512, self.flattened_dim // 4, 512, self.flattened_dim // 4, 512, self.flattened_dim // 4)
 
         self.d1 = decoder_block([512, 256], 256)
         self.d2 = decoder_block([256, 128], 128)
@@ -100,9 +100,9 @@ class Rotatory_Attention_Unet_v3(nn.Module):
 
     def apply_rotatory_attention(self, x):
         n_sample = x.shape[0]
-        new_output = torch.empty(size=x.shape).to(x.device)
-        new_output[0] = x[0]
-        new_output[-1] = x[-1]
+        # new_output = torch.empty(size=x.shape).to(x.device)
+        # new_output[0] = x[0]
+        # new_output[-1] = x[-1]
 
         for i in range(1, n_sample - 1, 1):
             # (features, hxw)
@@ -114,15 +114,19 @@ class Rotatory_Attention_Unet_v3(nn.Module):
             )
 
             output = output.permute(1, 0)
-            output = torch.unsqueeze(output.view(
-                self.rot_inc, int(self.flattened_dim ** 0.5), int(self.flattened_dim ** 0.5)), dim=0)
+            # output = torch.unsqueeze(output.view(
+            #     self.rot_inc, int(self.flattened_dim ** 0.5), int(self.flattened_dim ** 0.5)), dim=0)
 
-            output = nn.Softmax(dim=1)(output)
-            output = output * x[i]
+            output = output.view(
+                self.rot_inc, int(self.flattened_dim ** 0.5), int(self.flattened_dim ** 0.5))
 
-            new_output[i] = output
+            # output = nn.Softmax(dim=1)(output)
+            # output = output * x[i]
+            x[i] += output
 
-        return new_output
+        #     new_output[i] = output
+
+        # return new_output
 
     def forward(self, x):
         s1, p1 = self.e1(x)
@@ -131,7 +135,8 @@ class Rotatory_Attention_Unet_v3(nn.Module):
 
         b1 = self.b1(p3)
 
-        b1 = self.apply_rotatory_attention(b1)
+        # b1 = self.apply_rotatory_attention(b1)
+        self.apply_rotatory_attention(b1)
 
         d1 = self.d1(b1, s3)
         d2 = self.d2(d1, s2)
