@@ -46,14 +46,16 @@ def normal_train(model, loader, optimizer, loss_fn, num_classes, scaler, device=
         # scaler.update()
 
         """Take argmax for accuracy calculation"""
-        y_pred = torch.argmax(y_pred, dim=1)
-        y = torch.argmax(y, dim=1)
         y_pred = y_pred.detach().cpu().numpy()
         y = y.detach().cpu().numpy()
 
         """Update batch metrics"""
         batch_dice_coef = multiclass_dice_score(
-            y=y, y_pred=y_pred, num_classes=num_classes)
+            y=y, y_pred=y_pred)
+
+        # take argmax
+        y_pred = np.argmax(y_pred, axis=1)
+        y = np.argmax(y, axis=1)
 
         batch_accuracy = accuracy_score(
             y.flatten(), y_pred.flatten())
@@ -119,14 +121,17 @@ def normal_evaluate(model, loader, loss_fn, num_classes, scaler, device=torch.de
             loss = loss_fn(y_pred, y)
 
             """Convert to numpy for metrics calculation"""
-            y_pred = torch.argmax(y_pred, dim=1)
-            y = torch.argmax(y, dim=1)
             y_pred = y_pred.detach().cpu().numpy()
             y = y.detach().cpu().numpy()
 
             """Batch metrics calculation"""
             batch_dice_coef = multiclass_dice_score(
-                y=y, y_pred=y_pred, num_classes=num_classes)
+                y=y, y_pred=y_pred)
+
+            # take argmax
+            y_pred = np.argmax(y_pred, axis=1)
+            y = np.argmax(y, axis=1)
+
             batch_loss = loss.item()
             batch_f1 = f1_score(y.flatten(),
                                 y_pred.flatten(), average="micro")
@@ -219,14 +224,16 @@ def rotatory_train(model, loader, optimizer, loss_fn, num_classes, scaler, batch
             # scaler.update()
 
             """Detach and convert to numpy array"""
-            y_pred = torch.argmax(y_pred, dim=1)
-            y_ = torch.argmax(y_, dim=1)
             y_pred = y_pred.detach().cpu().numpy()
             y_ = y_.detach().cpu().numpy()
 
             """Update batch metrics"""
             batch_dice_coef = multiclass_dice_score(
-                y=y_, y_pred=y_pred, num_classes=num_classes)
+                y=y_, y_pred=y_pred)
+
+            # take argmax
+            y_pred = np.argmax(y_pred, axis=1)
+            y_ = np.argmax(y_, axis=1)
 
             batch_accuracy = accuracy_score(
                 y_.flatten(), y_pred.flatten())
@@ -307,7 +314,7 @@ def rotatory_evaluate(model, loader, loss_fn, batch_size, num_classes, device=to
                 y_pred = model(x_)
 
                 y_ = torch.squeeze(y_, dim=1)
-                y_ = nn.functional.one_hot(y_.long(), num_classes=8)
+                y_ = nn.functional.one_hot(y_.long(), num_classes=num_classes)
                 y_ = y_.permute(0, 3, 1, 2)
 
                 # calculate loss
@@ -315,14 +322,17 @@ def rotatory_evaluate(model, loader, loss_fn, batch_size, num_classes, device=to
                 epoch_loss += loss.item()
 
                 # argmax & convert to numpy to calculate metrics
-                y_pred = torch.argmax(y_pred, dim=1)
-                y_ = torch.argmax(y_, dim=1)
                 y_pred = y_pred.detach().cpu().numpy()
                 y_ = y_.detach().cpu().numpy()
 
                 # batch metrics calculation
                 epoch_dice_coef += multiclass_dice_score(
-                    y=y_, y_pred=y_pred, num_classes=num_classes)
+                    y=y_, y_pred=y_pred)
+
+                # argmax
+                y_pred = np.argmax(y_pred, axis=1)
+                y_ = np.argmax(y_, axis=1)
+
                 epoch_f1 += f1_score(y_.flatten(),
                                      y_pred.flatten(), average="micro")
                 epoch_accuracy += accuracy_score(

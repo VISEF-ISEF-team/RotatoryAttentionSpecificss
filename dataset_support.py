@@ -23,7 +23,7 @@ def load_MMWHS(batch_size, num_workers, split, rot):
             glob(os.path.join(root, "masks", "*.npy")))
 
         train_loader, val_loader = get_normal_loaders(
-            root_images=root_images, root_labels=root_labels, batch_size=batch_size, split=split, num_workers=num_workers)
+            root_images=root_images, root_labels=root_labels, batch_size=batch_size, split=split, num_workers=num_workers, num_classes=8)
 
     return train_loader, val_loader
 

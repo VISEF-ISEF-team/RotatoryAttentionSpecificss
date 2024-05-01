@@ -5,7 +5,7 @@ from train import total_train_procedure
 def main():
     """Setup arguments"""
     parser = ArgumentParser(description="Enter arguments for training")
-    parser.add_argument("-r", "--rot", action="store_true", required=True)
+    parser.add_argument("-r", "--rot", action="store_true")
 
     # model
     parser.add_argument("-m", "--model", choices=[

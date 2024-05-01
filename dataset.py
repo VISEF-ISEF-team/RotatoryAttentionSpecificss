@@ -47,9 +47,10 @@ class RotatoryModelDataset(Dataset):
 
 
 class NormalModelDataset(Dataset):
-    def __init__(self, images_path, masks_path):
+    def __init__(self, images_path, masks_path, num_classes=8):
         self.images_path = images_path
         self.masks_path = masks_path
+        self.num_classes = num_classes
         self.n_samples = len(self.images_path)
 
     def __len__(self):
@@ -57,7 +58,7 @@ class NormalModelDataset(Dataset):
 
     def __getitem__(self, index):
         image = cv2.imread(self.images_path[index], cv2.IMREAD_GRAYSCALE)
-        image = cv2.resize(image, (128, 128))
+        image = cv2.resize(image, (256, 256))
         image = image / 255.0
         image = image.astype(np.float32)
         image = np.expand_dims(
@@ -65,9 +66,9 @@ class NormalModelDataset(Dataset):
 
         mask = np.load(self.masks_path[index])
         mask = torch.from_numpy(mask)
-        mask = F.one_hot(mask, num_classes=8)
+        mask = F.one_hot(mask, num_classes=self.num_classes)
         mask = mask.numpy()
-        mask = resize(mask, (128, 128, 8),
+        mask = resize(mask, (256, 256, 8),
                       preserve_range=True, anti_aliasing=True)
         mask = torch.from_numpy(mask)
         mask = torch.argmax(mask, dim=-1)
@@ -106,7 +107,7 @@ def get_rotatory_loaders(root_images, root_labels, split=0.2, num_workers=6):
     return (train_loader, val_loader)
 
 
-def get_normal_loaders(root_images, root_labels, batch_size, split=0.2, num_workers=6):
+def get_normal_loaders(root_images, root_labels, batch_size, split=0.2, num_workers=6, num_classes=8):
 
     (x_train, y_train), (x_val, y_val) = load_dataset(
         root_images, root_labels, split=split)
@@ -114,11 +115,12 @@ def get_normal_loaders(root_images, root_labels, batch_size, split=0.2, num_work
     print(f"Train: {len(x_train)} || {len(y_train)}")
     print(f"Val: {len(x_val)} || {len(y_val)}")
 
-    train_dataset = NormalModelDataset(x_train, y_train)
+    train_dataset = NormalModelDataset(
+        x_train, y_train, num_classes=num_classes)
     train_loader = DataLoader(
         train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
 
-    val_dataset = NormalModelDataset(x_val, y_val)
+    val_dataset = NormalModelDataset(x_val, y_val, num_classes=num_classes)
     val_loader = DataLoader(val_dataset, batch_size=20,
                             shuffle=False, num_workers=num_workers)
 

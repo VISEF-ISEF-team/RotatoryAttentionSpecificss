@@ -102,7 +102,7 @@ def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name
         else:
             # train function
             train_loss, train_dice_coef, train_accuracy, train_jaccard, train_recall, train_f1 = normal_train(
-                model, train_loader, optimizer, loss_fn, num_classes, scaler, batch_size, device)
+                model, train_loader, optimizer, loss_fn, num_classes, scaler, device)
 
             # validate function
             valid_loss, valid_f1, valid_accuracy, valid_recall, valid_jaccard, valid_dice_coef = normal_evaluate(
