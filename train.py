@@ -7,7 +7,7 @@ from training_procedures import rotatory_evaluate, rotatory_train, normal_evalua
 from dataset_support import get_dataset
 
 
-def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name, num_epochs, batch_size, num_workers=6, num_classes=8, image_size=256, rotatory=True, mixed_precision=False, load_model=False, starting_epoch=0, starting_lr=1e-3):
+def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name, num_epochs, batch_size, num_workers=6, num_classes=8, image_size=256, rotatory=True, test=False,  mixed_precision=False, load_model=False, starting_epoch=0, starting_lr=1e-3):
 
     set_seeds()
 
@@ -76,7 +76,7 @@ def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name
     """Get loaderes and dataset information"""
     split = 0.2
     train_loader, val_loader = get_dataset(
-        dataset_name=dataset_name, batch_size=batch_size, num_workers=num_workers, split=split, rot=rotatory)
+        dataset_name=dataset_name, batch_size=batch_size, num_workers=num_workers, split=split, rot=rotatory, test=test)
 
     """ Training the model """
     best_valid_loss = float("inf")
@@ -94,11 +94,11 @@ def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name
         if rotatory:
             # train function
             train_loss, train_dice_coef, train_accuracy, train_jaccard, train_recall, train_f1 = rotatory_train(
-                model, train_loader, optimizer, loss_fn, num_classes, scaler, batch_size, device)
+                model, train_loader, optimizer, loss_fn, num_classes, test, scaler, batch_size, device)
 
             # validate function
             valid_loss, valid_f1, valid_accuracy, valid_recall, valid_jaccard, valid_dice_coef = rotatory_evaluate(
-                model, val_loader, loss_fn, batch_size, num_classes, device)
+                model, val_loader, loss_fn, batch_size, test, num_classes, device)
         else:
             # train function
             train_loss, train_dice_coef, train_accuracy, train_jaccard, train_recall, train_f1 = normal_train(

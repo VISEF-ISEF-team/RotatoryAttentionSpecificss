@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from torchinfo import summary
 from .LinearRotatoryAttention import LinearRotatoryAttentionModule
 
 
@@ -90,7 +91,7 @@ class Rotatory_Attention_Unet_v3(nn.Module):
         self.rot_inc = 512
 
         self.rag = LinearRotatoryAttentionModule(
-            self.flattened_dim, 512, self.flattened_dim, 512,  self.flattened_dim, 512, 512, self.flattened_dim // 4, 512, self.flattened_dim // 4, 512, self.flattened_dim // 4)
+            self.flattened_dim, 512, self.flattened_dim, 512,  self.flattened_dim, 512, 1024, self.flattened_dim // 4, 1024, self.flattened_dim // 4, 1024, self.flattened_dim // 4)
 
         self.d1 = decoder_block([512, 256], 256)
         self.d2 = decoder_block([256, 128], 128)
@@ -100,9 +101,7 @@ class Rotatory_Attention_Unet_v3(nn.Module):
 
     def apply_rotatory_attention(self, x):
         n_sample = x.shape[0]
-        # new_output = torch.empty(size=x.shape).to(x.device)
-        # new_output[0] = x[0]
-        # new_output[-1] = x[-1]
+        context_list = []
 
         for i in range(1, n_sample - 1, 1):
             # (features, hxw)
@@ -116,16 +115,25 @@ class Rotatory_Attention_Unet_v3(nn.Module):
             output = output.permute(1, 0)
             # output = torch.unsqueeze(output.view(
             #     self.rot_inc, int(self.flattened_dim ** 0.5), int(self.flattened_dim ** 0.5)), dim=0)
-
             output = output.view(
                 self.rot_inc, int(self.flattened_dim ** 0.5), int(self.flattened_dim ** 0.5))
 
+            context_list.append(output)
+
             # output = nn.Softmax(dim=1)(output)
             # output = output * x[i]
-            x[i] += output
+            # x[i] += output
 
-        #     new_output[i] = output
+            # new_output[i] = output
 
+        context_list = torch.stack(context_list)
+        context_mean = torch.mean(context_list, dim=0)
+
+        x = x + context_mean
+
+        return x
+
+        # x += new_output
         # return new_output
 
     def forward(self, x):
@@ -135,8 +143,7 @@ class Rotatory_Attention_Unet_v3(nn.Module):
 
         b1 = self.b1(p3)
 
-        # b1 = self.apply_rotatory_attention(b1)
-        self.apply_rotatory_attention(b1)
+        b1 = self.apply_rotatory_attention(b1)
 
         d1 = self.d1(b1, s3)
         d2 = self.d2(d1, s2)
@@ -151,8 +158,10 @@ class Rotatory_Attention_Unet_v3(nn.Module):
 
 
 if __name__ == "__main__":
-    device = torch.device("cpu")
+    device = torch.device("cuda")
     model = Rotatory_Attention_Unet_v3(image_size=128).to(device)
     x = torch.rand(8, 1, 128, 128).to(device)
     output = model(x)
     print(f"Output: {output.shape}")
+
+    summary(model=model, input_size=(8, 1, 128, 128))

@@ -66,13 +66,13 @@ class rotatory_decoder_block(nn.Module):
 
         self.inc = inc
         self.outc = outc
-        self.flattend_dim = flattened_dim
+        self.flattened_dim = flattened_dim
 
         self.up = nn.ConvTranspose2d(
             in_channels=inc, out_channels=outc, kernel_size=2, stride=2)
 
         self.rag = LinearRotatoryAttentionModule(
-            inc, flattened_dim, inc, flattened_dim, inc, flattened_dim, key_dim, inc // 4, key_dim, inc // 4, key_dim, inc // 4)
+            self.flattened_dim, inc,  self.flattened_dim, inc, self.flattened_dim, inc, key_dim, self.flattened_dim // 4, key_dim, self.flattened_dim // 4, key_dim, self.flattened_dim // 4)
         self.ag = attention_gate(inc=outc, outc=outc)
 
         self.relu = nn.ReLU(inplace=True)
@@ -84,20 +84,22 @@ class rotatory_decoder_block(nn.Module):
         """get left right vector from output"""
         n_sample = x.shape[0]
 
-        new_output = torch.empty(size=x.shape).to(x.device)
-        new_output[0] = x[0]
-        new_output[-1] = x[-1]
-
         for i in range(1, n_sample - 1, 1):
-            output = self.rag(x[i - 1].view(self.inc, -1), x[i].view(
-                self.inc, -1), x[i + 1].view(self.inc, -1))
+            output = self.rag(
+                # (features, hxw) -> (hxw, features)
+                x[i - 1].view(self.inc, -1).permute(1, 0),
+                x[i].view(self.inc, -1).permute(1, 0),
+                x[i + 1].view(self.inc, -1).permute(1, 0)
+            )
 
-            output = torch.unsqueeze(output.view(
-                self.inc, int(self.flattend_dim ** 0.5), int(self.flattend_dim ** 0.5)), dim=0)
+            output = output.permute(1, 0)
 
-            new_output[i] = output
+            output = output.view(
+                self.inc, int(self.flattened_dim ** 0.5), int(self.flattened_dim ** 0.5))
 
-        x = self.up(new_output)
+            x[i] = x[i] + output
+
+        x = self.up(x)
 
         ##########
 
@@ -122,11 +124,11 @@ class Rotatory_Attention_Unet_v2(nn.Module):
         self.b1 = conv_block(256, 512)
 
         self.d1 = rotatory_decoder_block(512, 256, int(
-            image_size // (2 ** 3)) ** 2, 512)
+            image_size // (2 ** 3)) ** 2, 1024)
         self.d2 = rotatory_decoder_block(256, 128, int(
-            image_size // (2 ** 2)) ** 2, 256)
+            image_size // (2 ** 2)) ** 2, 512)
         self.d3 = rotatory_decoder_block(
-            128, 64, int(image_size // (2 ** 1)) ** 2, 128)
+            128, 64, int(image_size // (2 ** 1)) ** 2, 256)
 
         self.output = nn.Conv2d(64, 8, kernel_size=1, padding=0)
 

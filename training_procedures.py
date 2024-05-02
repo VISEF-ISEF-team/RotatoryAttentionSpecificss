@@ -163,7 +163,7 @@ def normal_evaluate(model, loader, loss_fn, num_classes, scaler, device=torch.de
     return epoch_loss, epoch_f1, epoch_accuracy, epoch_recall, epoch_jaccard, epoch_dice_coef
 
 
-def rotatory_train(model, loader, optimizer, loss_fn, num_classes, scaler, batch_size, device=torch.device("cuda")):
+def rotatory_train(model, loader, optimizer, loss_fn, num_classes, test, scaler, batch_size, device=torch.device("cuda")):
     model.train()
     pbar = tqdm(loader)
     steps = len(loader)
@@ -261,6 +261,9 @@ def rotatory_train(model, loader, optimizer, loss_fn, num_classes, scaler, batch
             pbar.set_postfix(
                 {"loss": batch_loss, "dice_coef": batch_dice_coef, "accuracy": batch_accuracy, "iou": batch_jaccard})
 
+            if test:
+                break
+
     epoch_loss = epoch_loss / iter_counter
     epoch_dice_coef = epoch_dice_coef / iter_counter
     epoch_accuracy = epoch_accuracy / iter_counter
@@ -271,7 +274,7 @@ def rotatory_train(model, loader, optimizer, loss_fn, num_classes, scaler, batch
     return epoch_loss, epoch_dice_coef, epoch_accuracy, epoch_jaccard, epoch_recall, epoch_f1
 
 
-def rotatory_evaluate(model, loader, loss_fn, batch_size, num_classes, device=torch.device("cuda")):
+def rotatory_evaluate(model, loader, loss_fn, batch_size, test, num_classes, device=torch.device("cuda")):
 
     epoch_loss = 0.0
     epoch_f1 = 0.0
@@ -341,6 +344,9 @@ def rotatory_evaluate(model, loader, loss_fn, batch_size, num_classes, device=to
                     y_.flatten(), y_pred.flatten(), average="micro")
                 epoch_jaccard += jaccard_score(
                     y_.flatten(), y_pred.flatten(), average="micro")
+
+                if test:
+                    break
 
         epoch_loss = epoch_loss/iter_counter
         epoch_f1 = epoch_f1 / iter_counter

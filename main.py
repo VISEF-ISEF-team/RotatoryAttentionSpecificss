@@ -6,6 +6,7 @@ def main():
     """Setup arguments"""
     parser = ArgumentParser(description="Enter arguments for training")
     parser.add_argument("-r", "--rot", action="store_true")
+    parser.add_argument("-t", "--test", action="store_true")
 
     # model
     parser.add_argument("-m", "--model", choices=[
@@ -41,6 +42,7 @@ def main():
 
     """Process arguments"""
     rot = args.rot
+    test = args.test
     model_name = args.model
     loss_fn_name = args.loss
     optimizer_name = args.optim
@@ -72,6 +74,7 @@ def main():
         num_classes=num_classes,
         image_size=image_size,
         rotatory=rot,
+        test=test,
         mixed_precision=mixed_precision_boolean,
         load_model=load_model,
         starting_epoch=starting_epoch,

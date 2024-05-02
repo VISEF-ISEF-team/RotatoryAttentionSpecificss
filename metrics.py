@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+from scipy.special import softmax, log_softmax
 
 
 def dice_score(y, y_pred):
@@ -20,6 +21,8 @@ def multiclass_dice_score(y: np.ndarray, y_pred: np.ndarray, smooth: float = 0.0
     assert y.size == y_pred.size, print(
         f"Input size: {y.size} does not match targets: {y_pred.size}")
 
+    y_pred = np.exp(log_softmax(y_pred, axis=1))
+
     # flatten
     y = y.reshape(*y.shape[:-2], -1)
     y_pred = y_pred.reshape(*y_pred.shape[:-2], -1)
@@ -33,9 +36,7 @@ def multiclass_dice_score(y: np.ndarray, y_pred: np.ndarray, smooth: float = 0.0
     mask = y_pred.sum(dims) > 0
     dice_score *= mask
 
-    # dice_score_filtered = dice_score[dice_score != 0.0]
-    # dice_score_filtered = np.mean(dice_score_filtered)
-
+    dice_score = dice_score[dice_score != 0.0]
     dice_score = np.mean(dice_score)
 
     return dice_score
