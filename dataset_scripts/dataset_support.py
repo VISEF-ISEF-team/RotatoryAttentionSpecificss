@@ -1,16 +1,16 @@
 import os
 from glob import glob
-from dataset import get_normal_loaders, get_single_batch_normal_loader, get_rotatory_loaders, get_single_batch_rotatory_loader
+from data_loaders import get_normal_loaders, get_single_batch_normal_loader, get_rotatory_loaders, get_single_batch_rotatory_loader
 
 
 def load_MMWHS(batch_size, num_workers, split, rot, test):
     if rot:
-        root = "../Triple-View-R-Net/data_for_training/MMWHS/"
+        root = "../data_for_training/MMWHS/"
 
         root_images = sorted(
-            glob(os.path.join(root, "ct_train", "images", "*.nii.gz")))
+            glob(os.path.join(root,  "images", "*", "*.png")))
         root_labels = sorted(
-            glob(os.path.join(root, "ct_train", "masks", "*.nii.gz")))
+            glob(os.path.join(root, "labels", "*", "*.npy")))
 
         if test:
             train_loader, val_loader = get_single_batch_rotatory_loader(
@@ -19,12 +19,12 @@ def load_MMWHS(batch_size, num_workers, split, rot, test):
             train_loader, val_loader = get_rotatory_loaders(
                 root_images=root_images, root_labels=root_labels, split=split, num_workers=num_workers)
     else:
-        root = "../Triple-View-R-Net/data_for_training/MMWHS/"
+        root = "../data_for_training/MMWHS/"
 
         root_images = sorted(
             glob(os.path.join(root, "images", "*.png")))
         root_labels = sorted(
-            glob(os.path.join(root, "masks", "*.npy")))
+            glob(os.path.join(root, "labels", "*.npy")))
 
         if test:
             train_loader, val_loader = get_single_batch_normal_loader(

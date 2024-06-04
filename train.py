@@ -2,12 +2,14 @@ import time
 import os
 import torch
 from utils import seconds_to_hms, write_csv, write_hyperparameters, set_seeds, create_dir_with_id, get_device, rename_str_dir, check_directory_exists
-from train_support import get_loss_fn, get_optimziers, get_models
-from training_procedures import rotatory_evaluate, rotatory_train, normal_evaluate, normal_train
-from dataset_support import get_dataset
+from train_scripts.train_support import get_loss_fn, get_optimziers
+from train_scripts.normal_training_procedures import normal_evaluate, normal_train
+from train_scripts.rotatory_training_procedures import rotatory_evaluate, rotatory_train
+from dataset_scripts.dataset_support import get_dataset
+from model_scripts.model_support import get_models
 
 
-def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name, num_epochs, batch_size, num_workers=6, num_classes=8, image_size=256, rotatory=True, test=False,  mixed_precision=False, load_model=False, starting_epoch=0, starting_lr=1e-3):
+def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name, num_epochs, batch_size, num_workers=6, num_classes=8, image_size=256, rotatory=True, test=False, mixed_precision=False, load_model=False, starting_epoch=0, starting_lr=1e-3):
 
     set_seeds()
 
@@ -18,8 +20,7 @@ def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name
 
     """Define paths using templates"""
     # get base folder name without id
-    base_name = f"./storage/{model_name}_optim-{optimizer_name}_image-{image_size}_lr-{starting_lr}"
-    # rename_str_dir(base_name=base_name)
+    base_name = f"./storage/{model_name}_optim-{optimizer_name}_image-{image_size}_lr-{starting_lr}_mixed-{mixed_precision}"
 
     # get id and define path
     num_id = create_dir_with_id(base_name=base_name)
@@ -81,9 +82,6 @@ def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name
     """ Training the model """
     best_valid_loss = float("inf")
 
-    ############################################################################################################
-    ############################################################################################################
-    ############################################################################################################
     ############################################################################################################
 
     for epoch in range(starting_epoch, num_epochs, 1):

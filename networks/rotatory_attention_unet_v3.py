@@ -113,28 +113,19 @@ class Rotatory_Attention_Unet_v3(nn.Module):
             )
 
             output = output.permute(1, 0)
-            # output = torch.unsqueeze(output.view(
-            #     self.rot_inc, int(self.flattened_dim ** 0.5), int(self.flattened_dim ** 0.5)), dim=0)
+
             output = output.view(
-                self.rot_inc, int(self.flattened_dim ** 0.5), int(self.flattened_dim ** 0.5))
+                self.rot_inc, int(self.flattened_dim ** 0.5), int(self.flattened_dim ** 0.5))  # this is an attention score
 
             context_list.append(output)
-
-            # output = nn.Softmax(dim=1)(output)
-            # output = output * x[i]
-            # x[i] += output
-
-            # new_output[i] = output
 
         context_list = torch.stack(context_list)
         context_mean = torch.mean(context_list, dim=0)
 
+        # add with the attention score turns this into an additional attention gate
         x = x + context_mean
 
         return x
-
-        # x += new_output
-        # return new_output
 
     def forward(self, x):
         s1, p1 = self.e1(x)
@@ -148,9 +139,6 @@ class Rotatory_Attention_Unet_v3(nn.Module):
         d1 = self.d1(b1, s3)
         d2 = self.d2(d1, s2)
         d3 = self.d3(d2, s1)
-
-        # print(f"b1: {b1.shape}")
-        # print(f"s1: {s1.shape} || s2: {s2.shape} || s3: {s3.shape}")
 
         output = self.output(d3)
 

@@ -5,12 +5,7 @@ import cv2
 import numpy as np
 from skimage.transform import resize
 import torch.nn.functional as F
-from loss import CustomDiceLoss, MulticlassDiceLoss
-from networks.original_unet_attention import Attention_Unet
-from networks.rotatory_attention_unet import Rotatory_Attention_Unet
-from networks.rotatory_attention_unet_v2 import Rotatory_Attention_Unet_v2
-from networks.rotatory_attention_unet_v3 import Rotatory_Attention_Unet_v3
-from networks.unet import Unet
+from train_scripts.loss import CustomDiceLoss, MulticlassDiceLoss
 
 
 def get_optimziers(optimizer_name, parameters, learning_rate):
@@ -18,6 +13,8 @@ def get_optimziers(optimizer_name, parameters, learning_rate):
         optimizer = torch.optim.Adam(params=parameters, lr=learning_rate)
     elif optimizer_name == "adamw":
         optimizer = torch.optim.AdamW(params=parameters, lr=learning_rate)
+    elif optimizer_name == "sgd":
+        optimizer = torch.optim.SGD(params=parameters, lr=learning_rate)
     else:
         optimizer = torch.optim.Adam(params=parameters, lr=learning_rate)
 
@@ -32,22 +29,6 @@ def get_loss_fn(loss_fn_name):
         loss = MulticlassDiceLoss(weight=weights)
 
     return loss
-
-
-def get_models(model_name, num_classes=8, image_size=128):
-    # "unet", "rotatory_unet_attention", "rotatory_unet_attention_v3", "vit", "unetmer"
-    if model_name == "unet_attention":
-        model = Attention_Unet(num_classes=num_classes)
-    elif model_name == "unet":
-        model = Unet(outc=num_classes)
-    elif model_name == "rotatory_unet_attention":
-        model = Rotatory_Attention_Unet(image_size=image_size)
-    elif model_name == "rotatory_unet_attention_v2":
-        model = Rotatory_Attention_Unet_v2(image_size=image_size)
-    elif model_name == "rotatory_unet_attention_v3":
-        model = Rotatory_Attention_Unet_v3(image_size=image_size)
-
-    return model
 
 
 def normalize_image_intensity_range(img):
@@ -110,3 +91,13 @@ def duplicate_end(x):
     x = torch.cat((x, last_slice), dim=2)
 
     return x
+
+
+def get_new_batch_size(length, batch_size):
+    optimal_batch_size = 0
+
+    for i in range(batch_size, 3 - 1, -1):
+        if length % i >= 3:
+            optimal_batch_size = max(optimal_batch_size, i)
+
+    return optimal_batch_size
