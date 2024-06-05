@@ -1,5 +1,6 @@
 import time
 import torch
+import torch.amp
 from tqdm import tqdm
 import torch.nn as nn
 from monai.losses import DiceLoss, TverskyLoss
@@ -28,7 +29,7 @@ def normal_train(model, loader, optimizer, loss_fn, num_classes, scaler, device=
 
         optimizer.zero_grad()
 
-        # forward:
+        # forward
         y_pred = model(x)
 
         y = nn.functional.one_hot(y.long(), num_classes=num_classes)
@@ -105,6 +106,7 @@ def normal_evaluate(model, loader, loss_fn, num_classes, scaler, device=torch.de
 
     with torch.no_grad():
         for step, (x, y) in enumerate(pbar):
+
             pbar.set_description(f"Validation step: {step} / {total_steps}")
             x = x.to(device)
             y = y.to(device)

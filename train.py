@@ -9,7 +9,7 @@ from dataset_scripts.dataset_support import get_dataset
 from model_scripts.model_support import get_models
 
 
-def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name, num_epochs, batch_size, num_workers=6, num_classes=8, image_size=256, rotatory=True, test=False, mixed_precision=False, load_model=False, starting_epoch=0, starting_lr=1e-3):
+def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name, num_epochs, batch_size, num_workers=6, image_size=256, rotatory=True, test=False, mixed_precision=False, load_model=False, starting_epoch=0, starting_lr=1e-3):
 
     set_seeds()
 
@@ -46,6 +46,11 @@ def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name
         write_csv(test_metrics_path, ["Epoch", "LR", "Loss", "Dice",
                                       "Accuracy", "Jaccard", "Recall", "F1"], first=True)
 
+    """Get loaderes and dataset information"""
+    split = 0.2
+    num_classes, train_loader, val_loader = get_dataset(
+        dataset_name=dataset_name, batch_size=batch_size, num_workers=num_workers, split=split, rot=rotatory, test=test)
+
     """Initialize model and more"""
     if load_model:
         checkpoint = torch.load(checkpoint_path)
@@ -73,11 +78,6 @@ def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name
     """Test model output"""
     r = model(torch.rand(6, 1, image_size, image_size).to(device))
     print(f"Testing model output: {r.shape}")
-
-    """Get loaderes and dataset information"""
-    split = 0.2
-    train_loader, val_loader = get_dataset(
-        dataset_name=dataset_name, batch_size=batch_size, num_workers=num_workers, split=split, rot=rotatory, test=test)
 
     """ Training the model """
     best_valid_loss = float("inf")

@@ -1,57 +1,63 @@
 import os
 from glob import glob
-from data_loaders import get_normal_loaders, get_single_batch_normal_loader, get_rotatory_loaders, get_single_batch_rotatory_loader
+from dataset_scripts.data_loaders import get_normal_loaders, get_single_batch_normal_loader, get_rotatory_loaders, get_single_batch_rotatory_loader
 
 
 def load_MMWHS(batch_size, num_workers, split, rot, test):
     if rot:
-        root = "../data_for_training/MMWHS/"
+        root = "./data_for_training/MMWHS/"
 
         root_images = sorted(
-            glob(os.path.join(root,  "images", "*", "*.png")))
+            glob(os.path.join(root, "images", "*")))
         root_labels = sorted(
-            glob(os.path.join(root, "labels", "*", "*.npy")))
+            glob(os.path.join(root, "labels", "*")))
 
         if test:
             train_loader, val_loader = get_single_batch_rotatory_loader(
                 root_images=root_images, root_labels=root_labels, split=split, num_workers=num_workers)
         else:
             train_loader, val_loader = get_rotatory_loaders(
-                root_images=root_images, root_labels=root_labels, split=split, num_workers=num_workers)
+                root_images=root_images, root_labels=root_labels, batch_size=batch_size, split=split, num_workers=num_workers)
     else:
-        root = "../data_for_training/MMWHS/"
+        root = "./data_for_training/MMWHS/"
 
         root_images = sorted(
-            glob(os.path.join(root, "images", "*.png")))
+            glob(os.path.join(root, "images", "*",  "*.png")))
         root_labels = sorted(
-            glob(os.path.join(root, "labels", "*.npy")))
+            glob(os.path.join(root, "labels", "*", "*.npy")))
 
         if test:
             train_loader, val_loader = get_single_batch_normal_loader(
-                root_images=root_images, root_labels=root_labels, batch_size=batch_size, split=split, num_workers=num_workers, num_classes=8)
+                root_images=root_images, root_labels=root_labels, batch_size=batch_size, split=split, num_workers=num_workers)
         else:
             train_loader, val_loader = get_normal_loaders(
-                root_images=root_images, root_labels=root_labels, batch_size=batch_size, split=split, num_workers=num_workers, num_classes=8)
+                root_images=root_images, root_labels=root_labels, batch_size=batch_size, split=split, num_workers=num_workers)
 
     return train_loader, val_loader
 
 
-def get_dataset(dataset_name, batch_size, num_workers, split, rot, test):
+def get_dataset(dataset_name, batch_size, num_workers, split, rot, test=False):
     if dataset_name == "MMWHS":
+        num_classes = 8
         train_loader, val_loader = load_MMWHS(
             batch_size, num_workers=num_workers, split=split, rot=rot, test=test)
 
-    return train_loader, val_loader
+    return num_classes, train_loader, val_loader
 
 
 if __name__ == "__main__":
     batch_size = 20
     num_workers = 8
-    split = 0.6
-    rot = False
+    split = 0.2
+    rot = True
 
-    train_loader, val_loader = get_dataset(
-        dataset_name="MMWHS", batch_size=batch_size, num_workers=num_workers, split=split, rot=rot)
+    num_classes, train_loader, val_loader = get_dataset(
+        dataset_name="MMWHS", batch_size=batch_size, num_workers=num_workers, split=split, rot=rot, test=False)
+
+    counter = 0
 
     for x, y in train_loader:
         print(f"Image: {x.shape} || Mask: {y.shape}")
+        counter += 1
+
+    print(f"Counter: {counter}")

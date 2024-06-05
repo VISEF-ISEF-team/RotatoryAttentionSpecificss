@@ -4,7 +4,7 @@ from glob import glob
 import cv2
 import numpy as np
 import math
-from torch.utils.data import BatchSampler, DataLoader, Dataset
+from torch.utils.data import BatchSampler
 
 
 class RotatoryBatchSampler(BatchSampler):
@@ -32,7 +32,7 @@ class RotatoryBatchSampler(BatchSampler):
             self.total += math.ceil(len(indexes) / self.batch_size)
 
     def __len__(self):
-        pass
+        return self.total
 
     def __iter__(self):
         # can also shuffle the list order
@@ -45,6 +45,7 @@ class RotatoryBatchSampler(BatchSampler):
 
             count = len(indexes)
 
+            # yield function for creating batches
             for i, idx in enumerate(indexes):
                 batch.append(idx)
 

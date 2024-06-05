@@ -2,10 +2,8 @@ import os
 import numpy as np
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
-from dataset import RotatoryModelDataset, NormalModelDataset
-from batch_sampler import RotatoryBatchSampler
-import nibabel as nib
-import cv2
+from dataset_scripts.dataset import RotatoryModelDataset, NormalModelDataset
+from dataset_scripts.batch_sampler import RotatoryBatchSampler
 
 
 def load_dataset(images, masks, split=0.2):
@@ -20,25 +18,35 @@ def load_dataset(images, masks, split=0.2):
     return (x_train, y_train), (x_val, y_val)
 
 
-def get_rotatory_loaders(root_images, root_labels, split=0.2, num_workers=6):
+def get_rotatory_loaders(root_images, root_labels, batch_size, split=0.2, num_workers=8):
     (x_train, y_train), (x_val, y_val) = load_dataset(
         root_images, root_labels, split=split)
 
     print(f"Train: {len(x_train)} || {len(y_train)}")
     print(f"Val: {len(x_val)} || {len(y_val)}")
 
-    train_dataset = RotatoryModelDataset(x_train, y_train)
-    train_loader = DataLoader(
-        train_dataset, batch_size=None, shuffle=True, num_workers=num_workers)
+    train_dataset = RotatoryModelDataset(
+        images_folder=x_train, labels_folder=y_train)
 
-    val_dataset = RotatoryModelDataset(x_val, y_val)
-    val_loader = DataLoader(val_dataset, batch_size=None,
-                            shuffle=False, num_workers=num_workers)
+    val_dataset = RotatoryModelDataset(
+        images_folder=x_val, labels_folder=y_val)
+
+    train_batch_sampler = RotatoryBatchSampler(
+        samples=train_dataset.samples, batch_size=batch_size, drop_last=False)
+
+    val_batch_sampler = RotatoryBatchSampler(
+        samples=val_dataset.samples, batch_size=batch_size, drop_last=False)
+
+    train_loader = DataLoader(
+        dataset=train_dataset, batch_sampler=train_batch_sampler, num_workers=num_workers)
+
+    val_loader = DataLoader(
+        dataset=val_dataset, batch_sampler=val_batch_sampler, num_workers=num_workers)
 
     return (train_loader, val_loader)
 
 
-def get_normal_loaders(root_images, root_labels, batch_size, split=0.2, num_workers=6, num_classes=8):
+def get_normal_loaders(root_images, root_labels, batch_size, split=0.2, num_workers=8):
 
     (x_train, y_train), (x_val, y_val) = load_dataset(
         root_images, root_labels, split=split)
@@ -47,18 +55,18 @@ def get_normal_loaders(root_images, root_labels, batch_size, split=0.2, num_work
     print(f"Val: {len(x_val)} || {len(y_val)}")
 
     train_dataset = NormalModelDataset(
-        x_train, y_train, num_classes=num_classes)
+        x_train, y_train)
     train_loader = DataLoader(
         train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
 
-    val_dataset = NormalModelDataset(x_val, y_val, num_classes=num_classes)
+    val_dataset = NormalModelDataset(x_val, y_val)
     val_loader = DataLoader(val_dataset, batch_size=batch_size,
                             shuffle=False, num_workers=num_workers)
 
     return (train_loader, val_loader)
 
 
-def get_single_batch_normal_loader(root_images, root_labels, batch_size, split=0.2, num_workers=6, num_classes=8):
+def get_single_batch_normal_loader(root_images, root_labels, batch_size, split=0.2, num_workers=6):
     (x_train, y_train), (x_val, y_val) = load_dataset(
         root_images, root_labels, split=split)
 
@@ -74,11 +82,11 @@ def get_single_batch_normal_loader(root_images, root_labels, batch_size, split=0
     y_val = [y_val[i] for i in random_val_indices]
 
     train_dataset = NormalModelDataset(
-        x_train, y_train, num_classes=num_classes)
+        x_train, y_train)
     train_loader = DataLoader(
         train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers)
 
-    val_dataset = NormalModelDataset(x_val, y_val, num_classes=num_classes)
+    val_dataset = NormalModelDataset(x_val, y_val)
     val_loader = DataLoader(val_dataset, batch_size=20,
                             shuffle=False, num_workers=num_workers)
 
@@ -107,7 +115,3 @@ def get_single_batch_rotatory_loader(root_images, root_labels, split=0.2, num_wo
                             shuffle=False, num_workers=num_workers)
 
     return (train_loader, val_loader)
-
-
-if __name__ == "__main__":
-    pass

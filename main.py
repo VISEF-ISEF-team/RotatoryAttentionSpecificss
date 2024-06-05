@@ -28,7 +28,6 @@ def main():
     parser.add_argument("--epochs", type=int, default=25, required=True)
     parser.add_argument("--workers", type=int, default=6)
     parser.add_argument("--batch", type=int, default=8)
-    parser.add_argument("--classes", type=int, default=8, required=True)
     parser.add_argument("--size", type=int, default=256, required=True)
     parser.add_argument(
         "--precision", choices=["mixed", "normal"], default="normal")
@@ -50,7 +49,6 @@ def main():
     num_epochs = args.epochs
     num_workers = args.workers
     batch_size = args.batch
-    num_classes = args.classes
     image_size = args.size
     mixed_precision = args.precision
     starting_epoch = args.startepoch
@@ -71,7 +69,6 @@ def main():
         num_epochs=num_epochs,
         batch_size=batch_size,
         num_workers=num_workers,
-        num_classes=num_classes,
         image_size=image_size,
         rotatory=rot,
         test=test,
