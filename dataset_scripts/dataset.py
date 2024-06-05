@@ -1,12 +1,16 @@
 import cv2
 import os
 import numpy as np
+import torch.nn.functional as F
+import torch
 from torch.utils.data import Dataset
+
+# TODO: implement one hot encode on the fly and remove it out of the fucking training loop
 
 
 class RotatoryModelDataset(Dataset):
-    def __init__(self, images_folder: list, labels_folder: list):
-
+    def __init__(self, images_folder: list, labels_folder: list, num_classes: int):
+        self.num_classes = num_classes
         self.samples = []
 
         self.n_samples = 0
@@ -50,7 +54,11 @@ class RotatoryModelDataset(Dataset):
 
     def read_label(self, label_path):
         label = np.load(label_path)
-        label = np.expand_dims(label, axis=0).astype(np.uint8)
+        label = torch.from_numpy(label)
+
+        label = F.one_hot(label.long(), num_classes=self.num_classes)
+        label = torch.squeeze(label, dim=1)
+        label = label.permute(2, 0, 1)
 
         return label
 
@@ -65,7 +73,9 @@ class RotatoryModelDataset(Dataset):
 
 
 class NormalModelDataset(Dataset):
-    def __init__(self, images_path, labels_path):
+    def __init__(self, images_path: list, labels_path: list, num_classes: int):
+        self.num_classes = num_classes
+
         self.images_path = images_path
         self.labels_path = labels_path
         self.n_samples = len(self.images_path)
@@ -84,7 +94,11 @@ class NormalModelDataset(Dataset):
 
     def read_label(self, label_path):
         label = np.load(label_path)
-        label = np.expand_dims(label, axis=0).astype(np.uint8)
+        label = torch.from_numpy(label)
+
+        label = F.one_hot(label.long(), num_classes=self.num_classes)
+        label = torch.squeeze(label, dim=1)
+        label = label.permute(2, 0, 1)
 
         return label
 

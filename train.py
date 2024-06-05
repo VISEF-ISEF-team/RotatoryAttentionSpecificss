@@ -41,10 +41,10 @@ def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name
     """Initial write to csv to set rows"""
     if not load_model or starting_epoch == 0:
         write_csv(train_metrics_path, ["Epoch", "LR", "Loss", "Dice",
-                                       "Accuracy", "Jaccard", "Recall", "F1"], first=True)
+                                       "Accuracy", "Jaccard", "Recall", "F1", "Hausdorff"], first=True)
 
         write_csv(test_metrics_path, ["Epoch", "LR", "Loss", "Dice",
-                                      "Accuracy", "Jaccard", "Recall", "F1"], first=True)
+                                      "Accuracy", "Jaccard", "Recall", "F1", "Hausdorff"], first=True)
 
     """Get loaderes and dataset information"""
     split = 0.2
@@ -91,29 +91,29 @@ def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name
 
         if rotatory:
             # train function
-            train_loss, train_dice_coef, train_accuracy, train_jaccard, train_recall, train_f1 = rotatory_train(
+            train_loss, train_dice_coef, train_accuracy, train_jaccard, train_recall, train_f1, train_hausdorff = rotatory_train(
                 model, train_loader, optimizer, loss_fn, num_classes, test, scaler, batch_size, device)
 
             # validate function
-            valid_loss, valid_f1, valid_accuracy, valid_recall, valid_jaccard, valid_dice_coef = rotatory_evaluate(
+            valid_loss, valid_f1, valid_accuracy, valid_recall, valid_jaccard, valid_hausdorff = rotatory_evaluate(
                 model, val_loader, loss_fn, batch_size, test, num_classes, device)
         else:
             # train function
-            train_loss, train_dice_coef, train_accuracy, train_jaccard, train_recall, train_f1 = normal_train(
+            train_loss, train_dice_coef, train_accuracy, train_jaccard, train_recall, train_f1, train_hausdorff = normal_train(
                 model, train_loader, optimizer, loss_fn, num_classes, scaler, device)
 
             # validate function
-            valid_loss, valid_f1, valid_accuracy, valid_recall, valid_jaccard, valid_dice_coef = normal_evaluate(
+            valid_loss, valid_f1, valid_accuracy, valid_recall, valid_jaccard, valid_dice_coef, valid_hausdorff = normal_evaluate(
                 model, val_loader, loss_fn, num_classes, scaler, device)
 
         """WRite to CSV"""
         # write to train
         write_csv(train_metrics_path, [epoch, lr, train_loss, train_dice_coef, train_accuracy,
-                                       train_jaccard, train_recall, train_f1])
+                                       train_jaccard, train_recall, train_f1, train_hausdorff])
 
         # write to test
         write_csv(test_metrics_path, [epoch, lr, valid_loss, valid_dice_coef, valid_accuracy,
-                                      valid_jaccard, valid_recall, valid_f1])
+                                      valid_jaccard, valid_recall, valid_f1, valid_hausdorff])
 
         """Check loss and update learning rate"""
         scheduler.step(round(valid_loss, 4))
@@ -140,6 +140,7 @@ def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name
         data_str += f'\t Val. Recall: {valid_recall:.3f}\n'
         data_str += f'\t Val. Jaccard: {valid_jaccard:.3f}\n'
         data_str += f'\t Val. Dice Coef: {valid_dice_coef:.3f}\n'
+        data_str += f'\t Val. Hausdorff: {valid_dice_coef:.3f}\n'
         print(data_str)
 
         """Update lr value"""
