@@ -3,9 +3,7 @@ import csv
 import torch
 import cv2
 import numpy as np
-from skimage.transform import resize
 import os
-import torch.nn.functional as F
 import random
 import json
 from glob import glob

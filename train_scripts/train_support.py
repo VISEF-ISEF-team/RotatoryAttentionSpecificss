@@ -1,6 +1,4 @@
 import torch
-import torch.nn as nn
-import os
 import cv2
 import numpy as np
 from skimage.transform import resize
@@ -91,13 +89,3 @@ def duplicate_end(x):
     x = torch.cat((x, last_slice), dim=2)
 
     return x
-
-
-def get_new_batch_size(length, batch_size):
-    optimal_batch_size = 0
-
-    for i in range(batch_size, 3 - 1, -1):
-        if length % i >= 3:
-            optimal_batch_size = max(optimal_batch_size, i)
-
-    return optimal_batch_size

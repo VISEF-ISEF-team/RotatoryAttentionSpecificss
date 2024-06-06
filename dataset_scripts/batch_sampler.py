@@ -5,6 +5,7 @@ import cv2
 import numpy as np
 import math
 from torch.utils.data import BatchSampler
+from dataset_scripts.dataset_support import get_new_batch_size
 
 
 class RotatoryBatchSampler(BatchSampler):
@@ -45,10 +46,14 @@ class RotatoryBatchSampler(BatchSampler):
 
             count = len(indexes)
 
+            # calculate new batch size for rotatory guarantee
+            optimal_batch_size = get_new_batch_size(
+                length=count, batch_size=self.batch_size)
+
             # yield function for creating batches
             for i, idx in enumerate(indexes):
                 batch.append(idx)
 
-                if i == count - 1 or len(batch) == self.batch_size:
+                if i == count - 1 or len(batch) == optimal_batch_size:
                     yield batch
                     batch = []

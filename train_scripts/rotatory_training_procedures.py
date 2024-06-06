@@ -1,16 +1,13 @@
-import time
 import torch
 from tqdm import tqdm
-import torch.nn as nn
 from monai.losses import DiceLoss, TverskyLoss
 from sklearn.metrics import accuracy_score, f1_score, jaccard_score, recall_score
 from skimage.metrics import hausdorff_distance
-from train_scripts.train_support import get_new_batch_size
 from train_scripts.metrics import multiclass_dice_score
 import numpy as np
 
 
-def rotatory_train(model, loader, optimizer, loss_fn, num_classes, test, scaler, batch_size, device=torch.device("cuda")):
+def rotatory_train(model, loader, optimizer, loss_fn, test, scaler, device=torch.device("cuda")):
     model.train()
     pbar = tqdm(loader)
     total_steps = len(loader)
@@ -21,17 +18,12 @@ def rotatory_train(model, loader, optimizer, loss_fn, num_classes, test, scaler,
     epoch_recall = 0.0
     epoch_f1 = 0.0
     epoch_hausdorff = 0.0
-    iter_counter = 0
 
     for step, (x, y) in enumerate(pbar):
-        length = x.shape[-1]
 
         pbar.set_description(
             f"Train step: {step} / {total_steps}")
 
-        # new_batch_size = get_new_batch_size(length, batch_size)
-
-        # create a custom dataset right here with the batch size for better performance ?
         x = x.to(device)
         y = y.to(device)
 
@@ -95,18 +87,18 @@ def rotatory_train(model, loader, optimizer, loss_fn, num_classes, test, scaler,
         if test:
             break
 
-    epoch_loss = epoch_loss / iter_counter
-    epoch_dice_coef = epoch_dice_coef / iter_counter
-    epoch_accuracy = epoch_accuracy / iter_counter
-    epoch_jaccard = epoch_jaccard / iter_counter
-    epoch_recall = epoch_recall / iter_counter
-    epoch_f1 = epoch_f1 / iter_counter
-    epoch_hausdorff = epoch_hausdorff / iter_counter
+    epoch_loss = epoch_loss / total_steps
+    epoch_dice_coef = epoch_dice_coef / total_steps
+    epoch_accuracy = epoch_accuracy / total_steps
+    epoch_jaccard = epoch_jaccard / total_steps
+    epoch_recall = epoch_recall / total_steps
+    epoch_f1 = epoch_f1 / total_steps
+    epoch_hausdorff = epoch_hausdorff / total_steps
 
     return epoch_loss, epoch_dice_coef, epoch_accuracy, epoch_jaccard, epoch_recall, epoch_f1, epoch_hausdorff
 
 
-def rotatory_evaluate(model, loader, loss_fn, batch_size, test, num_classes, device=torch.device("cuda")):
+def rotatory_evaluate(model, loader, loss_fn, test, device=torch.device("cuda")):
 
     pbar = tqdm(loader)
     total_steps = len(loader)
@@ -117,7 +109,6 @@ def rotatory_evaluate(model, loader, loss_fn, batch_size, test, num_classes, dev
     epoch_jaccard = 0.0
     epoch_dice_coef = 0.0
     epoch_hausdorff = 0.0
-    iter_counter = 0
 
     model.eval()
     with torch.no_grad():
@@ -162,12 +153,12 @@ def rotatory_evaluate(model, loader, loss_fn, batch_size, test, num_classes, dev
             if test:
                 break
 
-        epoch_loss = epoch_loss/iter_counter
-        epoch_f1 = epoch_f1 / iter_counter
-        epoch_accuracy = epoch_accuracy / iter_counter
-        epoch_recall = epoch_recall / iter_counter
-        epoch_jaccard = epoch_jaccard / iter_counter
-        epoch_dice_coef = epoch_dice_coef / iter_counter
-        epoch_hausdorff = epoch_hausdorff / iter_counter
+        epoch_loss = epoch_loss / total_steps
+        epoch_f1 = epoch_f1 / total_steps
+        epoch_accuracy = epoch_accuracy / total_steps
+        epoch_recall = epoch_recall / total_steps
+        epoch_jaccard = epoch_jaccard / total_steps
+        epoch_dice_coef = epoch_dice_coef / total_steps
+        epoch_hausdorff = epoch_hausdorff / total_steps
 
     return epoch_loss, epoch_f1, epoch_accuracy, epoch_recall, epoch_jaccard, epoch_dice_coef, epoch_hausdorff

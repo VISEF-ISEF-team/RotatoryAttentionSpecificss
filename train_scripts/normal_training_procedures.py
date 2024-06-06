@@ -1,17 +1,14 @@
-import time
 import torch
 import torch.amp
 from tqdm import tqdm
-import torch.nn as nn
 from monai.losses import DiceLoss, TverskyLoss
 from sklearn.metrics import accuracy_score, f1_score, jaccard_score, recall_score
 from skimage.metrics import hausdorff_distance
-import pandas as pd
 from train_scripts.metrics import multiclass_dice_score
 import numpy as np
 
 
-def normal_train(model, loader, optimizer, loss_fn, num_classes, scaler, device=torch.device("cuda")):
+def normal_train(model, loader, optimizer, loss_fn, scaler, device=torch.device("cuda")):
     model.train()
     pbar = tqdm(loader)
     total_steps = len(loader)
@@ -95,7 +92,7 @@ def normal_train(model, loader, optimizer, loss_fn, num_classes, scaler, device=
     return epoch_loss, epoch_dice_coef, epoch_accuracy, epoch_jaccard, epoch_recall, epoch_f1, epoch_hausdorff
 
 
-def normal_evaluate(model, loader, loss_fn, num_classes, scaler, device=torch.device("cuda")):
+def normal_evaluate(model, loader, loss_fn, scaler, device=torch.device("cuda")):
     model.eval()
     pbar = tqdm(loader)
     total_steps = len(loader)

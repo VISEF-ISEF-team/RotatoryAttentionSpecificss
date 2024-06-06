@@ -5,7 +5,7 @@ from utils import seconds_to_hms, write_csv, write_hyperparameters, set_seeds, c
 from train_scripts.train_support import get_loss_fn, get_optimziers
 from train_scripts.normal_training_procedures import normal_evaluate, normal_train
 from train_scripts.rotatory_training_procedures import rotatory_evaluate, rotatory_train
-from dataset_scripts.dataset_support import get_dataset
+from dataset_scripts.dataset_main_loaders import get_dataset
 from model_scripts.model_support import get_models
 
 
@@ -92,19 +92,19 @@ def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name
         if rotatory:
             # train function
             train_loss, train_dice_coef, train_accuracy, train_jaccard, train_recall, train_f1, train_hausdorff = rotatory_train(
-                model, train_loader, optimizer, loss_fn, num_classes, test, scaler, batch_size, device)
+                model, train_loader, optimizer, loss_fn, test, scaler, device)
 
             # validate function
             valid_loss, valid_f1, valid_accuracy, valid_recall, valid_jaccard, valid_hausdorff = rotatory_evaluate(
-                model, val_loader, loss_fn, batch_size, test, num_classes, device)
+                model, val_loader, loss_fn, test, device)
         else:
             # train function
             train_loss, train_dice_coef, train_accuracy, train_jaccard, train_recall, train_f1, train_hausdorff = normal_train(
-                model, train_loader, optimizer, loss_fn, num_classes, scaler, device)
+                model, train_loader, optimizer, loss_fn, scaler, device)
 
             # validate function
             valid_loss, valid_f1, valid_accuracy, valid_recall, valid_jaccard, valid_dice_coef, valid_hausdorff = normal_evaluate(
-                model, val_loader, loss_fn, num_classes, scaler, device)
+                model, val_loader, loss_fn, scaler, device)
 
         """WRite to CSV"""
         # write to train
