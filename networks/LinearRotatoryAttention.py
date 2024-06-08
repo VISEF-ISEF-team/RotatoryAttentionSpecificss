@@ -92,6 +92,7 @@ class LinearRotatoryAttentionModule(nn.Module):
         return torch.matmul(c, weights)
 
     def forward(self, Ft, Fl, Fr):
+
         rt = torch.mean(Ft, dim=0)  # (dft, 1)
 
         Kl = self.lkeyweight(Fl)  # nfl x dkl
