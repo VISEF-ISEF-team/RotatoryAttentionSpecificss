@@ -1,6 +1,8 @@
 <--> unet attention  
 python .\main.py --model unet_attention --loss multi_dice --optim adam --dataset MMWHS --epochs 25 --workers 6 --batch 10  --size 256 --startepoch 0 --startlr 0.01  
 
+<--> resunet 
+python .\main.py -r --model resunet --loss multi_dice --optim adam --dataset MMWHS --epochs 25 --workers 8 --batch 8  --size 256 --startepoch 0 --startlr 0.01  
 
 <--> rotatory attention 
 python .\main.py -r --model rotatory_unet_attention --loss multi_dice --optim adam --dataset MMWHS --epochs 2 --workers 6 --batch 2  --size 256 --startepoch 0 --startlr 0.01  

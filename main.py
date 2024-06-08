@@ -10,7 +10,7 @@ def main():
 
     # model
     parser.add_argument("-m", "--model", choices=[
-                        "unet_attention", "unet", "rotatory_unet_attention", "rotatory_unet_attention_v2",  "rotatory_unet_attention_v3", "vit", "rotatory_vit", "unetmer"], default="rotatory_unet_attention_v3", required=True)
+                        "unet_attention", "unet", "rotatory_unet_attention", "rotatory_unet_attention_v2",  "rotatory_unet_attention_v3", "rotatory_vit", "unetmer", "resunet"], default="rotatory_unet_attention_v3", required=True)
 
     # loss
     parser.add_argument(

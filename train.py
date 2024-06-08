@@ -95,7 +95,7 @@ def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name
                 model, train_loader, optimizer, loss_fn, test, scaler, device)
 
             # validate function
-            valid_loss, valid_f1, valid_accuracy, valid_recall, valid_jaccard, valid_hausdorff = rotatory_evaluate(
+            valid_loss, valid_f1, valid_accuracy, valid_recall, valid_jaccard, valid_dice_coef, valid_hausdorff = rotatory_evaluate(
                 model, val_loader, loss_fn, test, device)
         else:
             # train function
