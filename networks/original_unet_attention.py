@@ -122,10 +122,10 @@ class DecoderPath(nn.Module):
 
 
 class Attention_Unet(nn.Module):
-    def __init__(self, num_classes=8):
+    def __init__(self, inc, outc=8):
         super().__init__()
 
-        self.e1 = encoder_block(1, 64)
+        self.e1 = encoder_block(inc, 64)
         self.e2 = encoder_block(64, 128)
         self.e3 = encoder_block(128, 256)
 
@@ -135,7 +135,7 @@ class Attention_Unet(nn.Module):
         self.d2 = decoder_block([256, 128], 128)
         self.d3 = decoder_block([128, 64], 64)
 
-        self.output = nn.Conv2d(64, num_classes, kernel_size=1, padding=0)
+        self.output = nn.Conv2d(64, outc, kernel_size=1, padding=0)
 
     def forward(self, x):
         s1, p1 = self.e1(x)
@@ -260,8 +260,7 @@ class Attention_Unet_Seg_Grad_Model(nn.Module):
 
 
 if __name__ == "__main__":
-    model = Attention_Unet()
-    x = torch.rand(3, 1, 128, 128)
+    model = Attention_Unet(inc=1, outc=8)
+    x = torch.rand(8, 1, 128, 128)
     output = model(x)
-    print(output.shape)
-    print(model.bottle_neck)
+    print(f"Output: {output.shape}")

@@ -6,28 +6,36 @@ import torch.nn.functional as F
 class DynamicRotatoryAttentionModule(nn.Module):
     # what if i don't need to linearly transform the shit, and all of them are the same
     # key and value matrices are the same
-    def __init__(self, seq_length, embed_dim, window_size):
+    def __init__(self, seq_length, embed_dim, window_size, value_dim=None, average=True):
         super().__init__()
 
+        if value_dim == None:
+            value_dim = embed_dim
+        else:
+            self.simplre_representation_weight = nn.Parameter(
+                torch.randn(embed_dim, value_dim))
+
+        self.average = average
+        self.value_dim = value_dim
         self.seq_length = seq_length
         self.embed_dim = embed_dim
         self.window_size = window_size
 
         # key weights
         self.key_weights = [nn.Parameter(torch.randn(
-            embed_dim, embed_dim), requires_grad=True) for _ in range(2 * (window_size - 1))]
+            embed_dim, value_dim), requires_grad=True) for _ in range(2 * (window_size - 1))]
 
         # value weights
         self.value_weights = [nn.Parameter(torch.randn(
-            embed_dim, embed_dim), requires_grad=True) for _ in range(2 * (window_size - 1))]
+            embed_dim, value_dim), requires_grad=True) for _ in range(2 * (window_size - 1))]
 
         # target key weight
         self.target_key_weight = nn.Parameter(
-            torch.randn(embed_dim, embed_dim), requires_grad=True)
+            torch.randn(embed_dim, value_dim), requires_grad=True)
 
         # target value weight
         self.target_value_weight = nn.Parameter(
-            torch.randn(embed_dim, embed_dim), requires_grad=True)
+            torch.randn(embed_dim, value_dim), requires_grad=True)
 
         # biases for attention score
         self.biases = [nn.Parameter(torch.rand(
@@ -58,13 +66,32 @@ class DynamicRotatoryAttentionModule(nn.Module):
 
         return torch.matmul(self.context_weight, context_vector)
 
+    def convert_to_correct_device(self, example):
+        device = example.device
+
+        for i in range(len(self.key_weights)):
+            self.key_weights[i] = self.key_weights[i].to(device)
+
+        for i in range(len(self.value_weights)):
+            self.value_weights[i] = self.value_weights[i].to(device)
+
+        for i in range(len(self.biases)):
+            self.biases[i] = self.biases[i].to(device)
+
     def forward(self, Ft, F_list: list):
         """
         Ft: current slice representation
         F: list of other slices
         """
         # calculate simple representation
-        rt = torch.unsqueeze(torch.mean(Ft, dim=0), dim=0)  # (x, y) -> (1, y)
+        # (x, y) -> (1, y) ->(1, y')
+
+        self.convert_to_correct_device(Ft)
+
+        rt = torch.unsqueeze(torch.mean(Ft, dim=0), dim=0)
+
+        if self.value_dim != self.embed_dim:
+            rt = torch.matmul(rt, self.simplre_representation_weight)
 
         assert len(F_list) == self.window_size - \
             1, print(
@@ -114,27 +141,37 @@ class DynamicRotatoryAttentionModule(nn.Module):
 
         full_representation = R + Rt
 
-        R = torch.concat(full_representation, dim=0)
+        if self.average:
+            R = torch.concat(full_representation, dim=0)
+            R = torch.mean(R, dim=0)
+            R = self.context_transformation(R)
+            return R
 
-        R = torch.mean(R, dim=0)
-
-        R = self.context_transformation(R)
-
-        return R
+        else:
+            R = torch.concat(full_representation, dim=1)
+            R = torch.squeeze(R, dim=0)
+            R = self.context_transformation(R)
+            return R
 
 
 if __name__ == "__main__":
 
     seq_length = 128
     embed_dim = 256
-    window_size = 3
+    window_size = 5
+    value_dim = embed_dim // (2 * (window_size - 1))
+    device = torch.device("cuda")
+
+    # model = DynamicRotatoryAttentionModule(
+    #     seq_length=seq_length, embed_dim=embed_dim, window_size=window_size, value_dim=value_dim, average=False)
 
     model = DynamicRotatoryAttentionModule(
-        seq_length=seq_length, embed_dim=embed_dim, window_size=window_size)
+        seq_length=seq_length, embed_dim=embed_dim, window_size=window_size).to(device)
 
-    a = [torch.rand(seq_length, embed_dim) for _ in range(window_size - 1)]
+    a = [torch.rand(seq_length, embed_dim).to(device)
+         for _ in range(window_size - 1)]
 
-    Ft = torch.randn(seq_length, embed_dim)
+    Ft = torch.randn(seq_length, embed_dim).to(device)
 
     output = model(Ft, a)
 

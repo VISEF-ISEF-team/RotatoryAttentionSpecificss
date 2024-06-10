@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 from torchinfo import summary
-from .LinearRotatoryAttention import LinearRotatoryAttentionModule
+from DynamicRotatoryAttention import DynamicRotatoryAttentionModule
 
 
 class conv_block(nn.Module):
@@ -78,10 +78,12 @@ class decoder_block(nn.Module):
 
 
 class Rotatory_Attention_Unet_v3(nn.Module):
-    def __init__(self, num_classes=8, image_size=128):
+    def __init__(self, inc, outc, image_size=256, window_size=3):
         super().__init__()
 
-        self.e1 = encoder_block(1, 64)
+        self.window_size = window_size
+
+        self.e1 = encoder_block(inc, 64)
         self.e2 = encoder_block(64, 128)
         self.e3 = encoder_block(128, 256)
 
@@ -90,32 +92,45 @@ class Rotatory_Attention_Unet_v3(nn.Module):
         self.flattened_dim = int((image_size // (2 ** 3)) ** 2)
         self.rot_inc = 512
 
-        self.rag = LinearRotatoryAttentionModule(
-            self.flattened_dim, 512, self.flattened_dim, 512,  self.flattened_dim, 512, 1024, self.flattened_dim // 4, 1024, self.flattened_dim // 4, 1024, self.flattened_dim // 4)
+        self.rag = DynamicRotatoryAttentionModule(
+            seq_length=self.flattened_dim, embed_dim=self.rot_inc, window_size=window_size)
+
+        self.rotatory_layer_norm = nn.LayerNorm(
+            normalized_shape=image_size // (2 ** 3))
 
         self.d1 = decoder_block([512, 256], 256)
         self.d2 = decoder_block([256, 128], 128)
         self.d3 = decoder_block([128, 64], 64)
 
-        self.output = nn.Conv2d(64, num_classes, kernel_size=1, padding=0)
+        self.output = nn.Conv2d(64, outc, kernel_size=1, padding=0)
 
     def apply_rotatory_attention(self, x):
         n_sample = x.shape[0]
+
+        reach = (self.window_size - 1) // 2
+
+        assert self.window_size < n_sample, print(
+            f"Batch does not contain enough image for rotatory attention.")
+
         context_list = []
 
-        for i in range(1, n_sample - 1, 1):
-            # (features, hxw)
-            output = self.rag(
-                # (features, hxw) -> (hxw, features)
-                x[i - 1].view(self.rot_inc, -1).permute(1, 0),
-                x[i].view(self.rot_inc, -1).permute(1, 0),
-                x[i + 1].view(self.rot_inc, -1).permute(1, 0)
-            )
+        for i in range(0 + reach, n_sample - reach, 1):
+            # (num_features, hxw) -> (hxw, features)
+            target = x[i].view(self.rot_inc, -1).permute(1, 0)
+
+            left_list = [x[i].view(self.rot_inc, -1).permute(1, 0)
+                         for i in range(i-reach, i)]
+            right_list = [x[i].view(self.rot_inc, -1).permute(1, 0)
+                          for i in range(i + 1, i + reach + 1)]
+
+            f_list = left_list + right_list
+
+            output = self.rag(target, f_list)
 
             output = output.permute(1, 0)
 
             output = output.view(
-                self.rot_inc, int(self.flattened_dim ** 0.5), int(self.flattened_dim ** 0.5))  # this is an attention score
+                self.rot_inc, int(self.flattened_dim ** 0.5), int(self.flattened_dim ** 0.5))  # attention score
 
             context_list.append(output)
 
@@ -124,6 +139,7 @@ class Rotatory_Attention_Unet_v3(nn.Module):
 
         # add with the attention score turns this into an additional attention gate
         x = x + context_mean
+        x = self.rotatory_layer_norm(x)
 
         return x
 
@@ -147,9 +163,10 @@ class Rotatory_Attention_Unet_v3(nn.Module):
 
 if __name__ == "__main__":
     device = torch.device("cuda")
-    model = Rotatory_Attention_Unet_v3(image_size=128).to(device)
-    x = torch.rand(8, 1, 128, 128).to(device)
+    model = Rotatory_Attention_Unet_v3(
+        inc=3, outc=8, image_size=256, window_size=7).to(device)
+
+    x = torch.rand(8, 3, 256, 256).to(device)
+
     output = model(x)
     print(f"Output: {output.shape}")
-
-    summary(model=model, input_size=(8, 1, 128, 128))

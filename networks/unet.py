@@ -20,9 +20,9 @@ class DoubleConvolution(nn.Module):
         return self.conv(x)
 
 
-class Unet(nn.Module):
+class UNet(nn.Module):
     def __init__(self, inc=1, outc=1, features=[64, 128, 256, 512]):
-        super(Unet, self).__init__()
+        super(UNet, self).__init__()
         self.ups = nn.ModuleList()
         self.downs = nn.ModuleList()
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
@@ -64,7 +64,7 @@ class Unet(nn.Module):
 
 if __name__ == "__main__":
     x = torch.rand((3, 1, 256, 256))
-    model = Unet(inc=1, outc=1)
+    model = UNet(inc=1, outc=1)
     preds = model(x)
 
     print(preds.shape)

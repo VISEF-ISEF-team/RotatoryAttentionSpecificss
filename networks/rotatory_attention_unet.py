@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-from .LinearRotatoryAttention import LinearRotatoryAttentionModule
+from DynamicRotatoryAttention import DynamicRotatoryAttentionModule
 
 
 class conv_block(nn.Module):
@@ -30,18 +30,19 @@ class encoder_block(nn.Module):
 
 
 class decoder_block(nn.Module):
-    def __init__(self, inc, outc, flattened_dim):
+    def __init__(self, inc, outc, flattened_dim, window_size):
         super().__init__()
 
         self.inc = inc
         self.outc = outc
-        self.flattend_dim = flattened_dim
+        self.flattened_dim = flattened_dim
+        self.window_size = window_size
 
         self.up = nn.ConvTranspose2d(
             in_channels=inc, out_channels=outc, kernel_size=2, stride=2)
 
-        self.rag = LinearRotatoryAttentionModule(
-            inc, flattened_dim, inc, flattened_dim, inc, flattened_dim, flattened_dim, inc // 4, flattened_dim, inc // 4, flattened_dim, inc // 4)
+        self.rag = DynamicRotatoryAttentionModule(
+            seq_length=flattened_dim, embed_dim=inc, window_size=window_size)
 
         self.relu = nn.ReLU(inplace=True)
         self.sigmoid = nn.Sigmoid()
@@ -51,24 +52,32 @@ class decoder_block(nn.Module):
         # x and s must have same height and width
         """get left right vector from output"""
         n_sample = x.shape[0]
+        reach = (self.window_size - 1) // 2
 
         new_output = torch.empty(size=x.shape).to(x.device)
-        new_output[0] = x[0]
-        new_output[-1] = x[-1]
 
-        for i in range(1, n_sample - 1, 1):
-            # left = x[i - 1].view(self.inc, -1)
-            # current = x[i].view(self.inc, -1)
-            # right = x[i + 1].view(self.inc, -1)
+        # add leftover inputs from left side
+        for i in range(0, 0 + reach + 1, 1):
+            new_output[i] = x[i]
 
-            # print(
-            #     f"Left: {left.shape} || Current: {current.shape} || Right: {right.shape}")
+        # add leftover inputs from right side
+        for i in range(n_sample - reach, n_sample, 1):
+            new_output[i] = x[i]
 
-            output = self.rag(x[i - 1].view(self.inc, -1), x[i].view(
-                self.inc, -1), x[i + 1].view(self.inc, -1))
+        for i in range(0 + reach, n_sample - reach, 1):
+            target = x[i].view(self.inc, -1).permute(1, 0)
+
+            left_list = [x[i].view(self.inc, -1).permute(1, 0)
+                         for i in range(i-reach, i)]
+            right_list = [x[i].view(self.inc, -1).permute(1, 0)
+                          for i in range(i + 1, i + reach + 1)]
+
+            f_list = left_list + right_list
+
+            output = self.rag(target, f_list)
 
             output = torch.unsqueeze(output.view(
-                self.inc, int(self.flattend_dim ** 0.5), int(self.flattend_dim ** 0.5)), dim=0)
+                self.inc, int(self.flattened_dim ** 0.5), int(self.flattened_dim ** 0.5)), dim=0)
 
             new_output[i] = output
 
@@ -88,20 +97,23 @@ class decoder_block(nn.Module):
 
 
 class Rotatory_Attention_Unet(nn.Module):
-    def __init__(self, image_size):
+    def __init__(self, inc, outc, image_size, window_size):
         super().__init__()
 
-        self.e1 = encoder_block(1, 64)
+        self.e1 = encoder_block(inc, 64)
         self.e2 = encoder_block(64, 128)
         self.e3 = encoder_block(128, 256)
 
         self.b1 = conv_block(256, 512)
 
-        self.d1 = decoder_block(512, 256, int(image_size // (2 ** 3)) ** 2)
-        self.d2 = decoder_block(256, 128, int(image_size // (2 ** 2)) ** 2)
-        self.d3 = decoder_block(128, 64, int(image_size // (2 ** 1)) ** 2)
+        self.d1 = decoder_block(512, 256, int(
+            image_size // (2 ** 3)) ** 2, window_size=window_size)
+        self.d2 = decoder_block(256, 128, int(
+            image_size // (2 ** 2)) ** 2, window_size=window_size)
+        self.d3 = decoder_block(128, 64, int(
+            image_size // (2 ** 1)) ** 2, window_size=window_size)
 
-        self.output = nn.Conv2d(64, 8, kernel_size=1, padding=0)
+        self.output = nn.Conv2d(64, outc, kernel_size=1, padding=0)
 
     def forward(self, x):
         s1, p1 = self.e1(x)
@@ -120,8 +132,13 @@ class Rotatory_Attention_Unet(nn.Module):
 
 
 if __name__ == "__main__":
-    device = torch.device("cpu")
-    model = Rotatory_Attention_Unet(image_size=128).to(device)
-    x = torch.rand(8, 1, 128, 128).to(device)
+    device = torch.device("cuda")
+
+    model = Rotatory_Attention_Unet(
+        inc=3, outc=8, image_size=256, window_size=5).to(device)
+
+    x = torch.rand(8, 3, 256, 256).to(device)
+
     output = model(x)
+
     print(f"Output: {output.shape}")
