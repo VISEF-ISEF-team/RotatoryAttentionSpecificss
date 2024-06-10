@@ -39,10 +39,11 @@ def load_MMWHS(batch_size, num_workers, split, rot, test, num_classes):
 def get_dataset(dataset_name, batch_size, num_workers, split, rot, test=False):
     if dataset_name == "MMWHS":
         num_classes = 8
+        color_channel = 1
         train_loader, val_loader = load_MMWHS(
             batch_size, num_workers=num_workers, split=split, rot=rot, test=test, num_classes=num_classes)
 
-    return num_classes, train_loader, val_loader
+    return color_channel, num_classes, train_loader, val_loader
 
 
 if __name__ == "__main__":

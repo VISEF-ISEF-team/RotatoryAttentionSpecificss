@@ -9,7 +9,7 @@ from dataset_scripts.dataset_main_loaders import get_dataset
 from model_scripts.model_support import get_models
 
 
-def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name, num_epochs, batch_size, num_workers=6, image_size=256, rotatory=True, test=False, mixed_precision=False, load_model=False, starting_epoch=0, starting_lr=1e-3):
+def total_train_procedure(model_name, window_size, dataset_name, optimizer_name, loss_fn_name, num_epochs, batch_size, num_workers=6, image_size=256, rotatory=True, test=False, mixed_precision=False, load_model=False, starting_epoch=0, starting_lr=1e-3):
 
     set_seeds()
 
@@ -48,14 +48,14 @@ def total_train_procedure(model_name, dataset_name, optimizer_name, loss_fn_name
 
     """Get loaderes and dataset information"""
     split = 0.2
-    num_classes, train_loader, val_loader = get_dataset(
+    color_channel, num_classes, train_loader, val_loader = get_dataset(
         dataset_name=dataset_name, batch_size=batch_size, num_workers=num_workers, split=split, rot=rotatory, test=test)
 
     """Initialize model and more"""
     if load_model:
         checkpoint = torch.load(checkpoint_path)
-        model = get_models(model_name=model_name,
-                           num_classes=num_classes, image_size=image_size)
+        model = get_models(model_name=model_name, color_channel=color_channel,
+                           window_size=window_size, num_classes=num_classes, image_size=image_size)
         model.load_state_dict(checkpoint)
         model.to(device)
     else:

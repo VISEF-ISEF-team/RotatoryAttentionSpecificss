@@ -12,6 +12,9 @@ def main():
     parser.add_argument("-m", "--model", choices=[
                         "unet_attention", "unet", "rotatory_unet_attention", "rotatory_unet_attention_v2",  "rotatory_unet_attention_v3", "rotatory_vit", "unetmer", "resunet"], default="rotatory_unet_attention_v3", required=True)
 
+    # window size
+    parser.add_argument("-ws", "--winsize", default=3, required=True)
+
     # loss
     parser.add_argument(
         "-l", "--loss", choices=["dice", "multi_dice", "tversky", "focal"], default="dice", required=True)
@@ -43,6 +46,7 @@ def main():
     rot = args.rot
     test = args.test
     model_name = args.model
+    window_size = args.window_size
     loss_fn_name = args.loss
     optimizer_name = args.optim
     dataset_name = args.dataset
@@ -60,9 +64,15 @@ def main():
     else:
         mixed_precision_boolean = True
 
+    # check for window size
+    if rot and window_size == None:
+        raise Exception(
+            "Rotatory model chosen but no window size is provided.")
+
     # call main training function
     total_train_procedure(
         model_name=model_name,
+        window_size=window_size,
         dataset_name=dataset_name,
         optimizer_name=optimizer_name,
         loss_fn_name=loss_fn_name,
