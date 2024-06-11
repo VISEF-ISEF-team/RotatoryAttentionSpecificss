@@ -14,7 +14,7 @@ class ConvolutionBatchNormblock(nn.Module):
         # convolutional layer
 
         self.conv1 = nn.Conv2d(in_channels=in_channels,
-                               out_channels=out_channels, padding=padding, kernel_size=kernel_size, stride=stride)
+                               out_channels=out_channels, padding=padding, kernel_size=kernel_size, stride=stride, bias=False)
 
         # batch norm
         self.bn = nn.BatchNorm2d(num_features=in_channels)
