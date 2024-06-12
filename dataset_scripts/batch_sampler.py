@@ -5,7 +5,7 @@ import cv2
 import numpy as np
 import math
 from torch.utils.data import BatchSampler
-from dataset_scripts.dataset_support import get_new_batch_size
+from dataset_support import get_new_batch_size
 
 
 class RotatoryBatchSampler(BatchSampler):

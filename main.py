@@ -10,7 +10,7 @@ def main():
 
     # model
     parser.add_argument("-m", "--model", choices=[
-                        "unet_attention", "unet", "rotatory_unet_attention", "rotatory_unet_attention_v2",  "rotatory_unet_attention_v3", "rotatory_vit", "unetmer", "resunet"], default="rotatory_unet_attention_v3", required=True)
+                        "unet_attention", "unet", "rotatory_unet_attention", "rotatory_unet_attention_v2",  "rotatory_unet_attention_v3", "resunet", "rotatory_resunet_attention", "transunet", "rotatory_transunet_attention"], default="rotatory_unet_attention_v3", required=True)
 
     # window size
     parser.add_argument("-ws", "--winsize", default=3, required=True)
@@ -21,15 +21,15 @@ def main():
 
     # optimizer
     parser.add_argument(
-        "--optim", choices=["adam", "adamw"], default="adam", required=True)
+        "--optim", choices=["adam", "adamw", "sgd"], default="adam", required=True)
 
     # dataset name
     parser.add_argument(
-        "--dataset", choices=["MMWHS", "CHD", "VHSCDD"], required=True, default="MMWHS")
+        "--dataset", choices=["MMWHS", "ImageCHD", "ImageTBAD", "Synapse"], required=True, default="MMWHS")
 
     # training related param
     parser.add_argument("--epochs", type=int, default=25, required=True)
-    parser.add_argument("--workers", type=int, default=6)
+    parser.add_argument("--workers", type=int, default=12)
     parser.add_argument("--batch", type=int, default=8)
     parser.add_argument("--size", type=int, default=256, required=True)
     parser.add_argument(
@@ -65,7 +65,7 @@ def main():
         mixed_precision_boolean = True
 
     # check for window size
-    if rot and window_size == None:
+    if rot == True and window_size == None:
         raise Exception(
             "Rotatory model chosen but no window size is provided.")
 

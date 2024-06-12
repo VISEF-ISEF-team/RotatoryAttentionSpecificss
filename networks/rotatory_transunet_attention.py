@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 from .vit import PatchEmbedding
+from .DynamicRotatoryAttention import DynamicRotatoryAttentionModule
 
 
 class ConvolutionBatchNormblock(nn.Module):
@@ -30,10 +31,10 @@ class ConvolutionBatchNormblock(nn.Module):
 
 
 class DownSampleBlock(nn.Module):
-    def __init__(self, in_channels, out_channels):
+    def __init__(self, in_channels, out_channels, kernel_size):
         super().__init__()
 
-        kernel_size = 3
+        kernel_size = kernel_size
         padding = "same"
         stride = 1
 
@@ -53,41 +54,19 @@ class DownSampleBlock(nn.Module):
         return x
 
 
-class CUPUpsampleBlock(nn.Module):
-    def __init__(self, in_channels, out_channels):
-        super().__init__()
-
-        kernel_size = 3
-        padding = "same"
-        stride = 1
-
-        self.up = nn.Upsample(scale_factor=2)
-
-        self.single_conv = nn.Conv2d(
-            in_channels=in_channels, out_channels=out_channels, kernel_size=1, stride=1, padding="same")
-
-        self.conv_block = ConvolutionBatchNormblock(
-            in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, padding=padding, stride=stride)
-
-    def forward(self, x, skip):
-        x = self.up(x)
-        x = self.single_conv(x)
-
-        x = torch.cat((x, skip), dim=1)
-
-        x = self.conv_block(x)
-
-        return x
-
-
 class CNNEncoder(nn.Module):
-    def __init__(self, in_channels):
+    def __init__(self, in_channels, kernel_size, features: list):
         super().__init__()
 
         # first convolution
-        self.d1 = DownSampleBlock(in_channels=in_channels, out_channels=64)
-        self.d2 = DownSampleBlock(in_channels=64, out_channels=128)
-        self.d3 = DownSampleBlock(in_channels=128, out_channels=256)
+        self.d1 = DownSampleBlock(
+            in_channels=in_channels, out_channels=features[0], kernel_size=kernel_size)
+
+        self.d2 = DownSampleBlock(
+            in_channels=64, out_channels=features[1], kernel_size=kernel_size)
+
+        self.d3 = DownSampleBlock(
+            in_channels=128, out_channels=features[2], kernel_size=kernel_size)
 
     def forward(self, x):
         x1 = self.d1(x)
@@ -154,23 +133,108 @@ class ViTComponent(nn.Module):
         return x
 
 
+class CUPRotatoryUpSampleBlock(nn.Module):
+    def __init__(self, in_channels, out_channels, kernel_size, flattened_dim, window_size):
+        super().__init__()
+
+        self.window_size = window_size
+        self.flattened_dim = flattened_dim
+        self.rot_inc = in_channels
+        kernel_size = kernel_size
+        padding = "same"
+        stride = 1
+
+        self.up = nn.Upsample(scale_factor=2)
+
+        self.single_conv = nn.Conv2d(
+            in_channels=in_channels, out_channels=out_channels, kernel_size=1, stride=1, padding="same")
+
+        self.conv_block = ConvolutionBatchNormblock(
+            in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size, padding=padding, stride=stride)
+
+        # rotatory attention
+        self.rotatory_layer_norm = nn.LayerNorm(
+            normalized_shape=in_channels)
+
+        self.rag = DynamicRotatoryAttentionModule(
+            seq_length=flattened_dim, embed_dim=in_channels, window_size=window_size)
+
+    def apply_rotatory_attention(self, x):
+        n_sample = x.shape[0]
+
+        reach = (self.window_size - 1) // 2
+
+        assert self.window_size < n_sample, print(
+            f"Batch does not contain enough image for rotatory attention.")
+
+        context_list = []
+
+        for i in range(0 + reach, n_sample - reach, 1):
+            # (num_features, hxw) -> (hxw, features)
+            target = x[i].view(self.rot_inc, -1).permute(1, 0)
+
+            left_list = [x[i].view(self.rot_inc, -1).permute(1, 0)
+                         for i in range(i-reach, i)]
+            right_list = [x[i].view(self.rot_inc, -1).permute(1, 0)
+                          for i in range(i + 1, i + reach + 1)]
+
+            f_list = left_list + right_list
+
+            output = self.rag(target, f_list)
+
+            context_list.append(output)
+
+        context_list = torch.stack(context_list)
+        context_list = self.rotatory_layer_norm(context_list)
+        context_mean = torch.mean(context_list, dim=0)
+
+        context_mean = context_mean.permute(1, 0)
+
+        context_mean = context_mean.view(
+            self.rot_inc, int(self.flattened_dim ** 0.5), int(self.flattened_dim ** 0.5))
+
+        # add with the attention score turns this into an additional attention gate
+        x = x + context_mean
+        return x
+
+    def forward(self, x, skip):
+        x = self.up(x)
+        x = self.single_conv(x)
+
+        x = torch.cat((x, skip), dim=1)
+
+        x = self.apply_rotatory_attention(x)
+
+        x = self.conv_block(x)
+
+        return x
+
+
 class CNNDecoder(nn.Module):
-    def __init__(self, patch_size, embedding_dim, cup=True):
+    def __init__(self, patch_size, kernel_size, image_size, embedding_dim, window_size, features, cup=True):
         super().__init__()
 
         self.patch_size = patch_size
         self.embedding_dim = embedding_dim
+        self.image_size = image_size
+        self.kernel_size = kernel_size
+        self.window_size = window_size
+        self.features = features
+        self.cup = cup
 
         # single convolution for converting channel
         self.single_conv = nn.Conv2d(
             in_channels=embedding_dim, out_channels=512, kernel_size=3, stride=1, padding="same")
 
-        # decoder blocks
-        self.u1 = CUPUpsampleBlock(in_channels=512, out_channels=256)
+        # create empty decoder blocks
+        self.u1 = CUPRotatoryUpSampleBlock(
+            in_channels=self.features[-1], out_channels=self.features[-2], kernel_size=self.kernel_size, flattened_dim=int((image_size * 2 * 1) ** 2), window_size=window_size)
 
-        self.u2 = CUPUpsampleBlock(in_channels=256, out_channels=128)
+        self.u2 = CUPRotatoryUpSampleBlock(
+            in_channels=self.features[-2], out_channels=self.features[-3], kernel_size=self.kernel_size, flattened_dim=int((image_size * 2 * 2) ** 2), window_size=window_size)
 
-        self.u3 = CUPUpsampleBlock(in_channels=128, out_channels=64)
+        self.u3 = CUPRotatoryUpSampleBlock(
+            in_channels=self.features[-3], out_channels=self.features[-4], kernel_size=self.kernel_size, flattened_dim=int((image_size * 2 * 4) ** 2), window_size=window_size)
 
         self.u4 = nn.Upsample(scale_factor=2)
 
@@ -188,7 +252,7 @@ class CNNDecoder(nn.Module):
         x = x.permute(0, 2, 1).contiguous()
 
         # calculate height and width
-        size = int((flattened * (self.patch_size ** 2)) ** 0.5)
+        size = self.image_size * 2
 
         x = x.view(batch_size, dimension, size //
                    self.patch_size, size // self.patch_size)
@@ -209,26 +273,38 @@ class CNNDecoder(nn.Module):
         return u4
 
 
-class TransUNet(nn.Module):
-    def __init__(self, inc, outc, image_size):
+class Rotatory_TransUNet_Attention(nn.Module):
+    def __init__(self, inc, outc, image_size, window_size):
         super().__init__()
 
+        kernel_size = 3
+        features = [64, 128, 256, 512]
+        recalculated_patch_size = 2
+
         # encoder
-        self.encoder = CNNEncoder(in_channels=inc)
+        self.encoder = CNNEncoder(
+            in_channels=inc, kernel_size=kernel_size, features=features)
 
         # transformer
 
         # patch size = 2 is fixed if you want the output of the ViT component to be (H / 16, W / 16) after 3 rounds of downsampling
         self.vit = ViTComponent(img_size=image_size // (2 ** 3), inc=256,
-                                patch_size=2, embedding_dim=768)
+                                patch_size=recalculated_patch_size, embedding_dim=768)
+
+        # calculate new image size after ViT component
+        new_image_size = int(image_size // (2 ** 3) //
+                             recalculated_patch_size)
 
         # decoder
         self.decoder = CNNDecoder(patch_size=self.vit.patch_size,
-                                  embedding_dim=self.vit.embedding_dim)
+                                  kernel_size=kernel_size,
+                                  image_size=new_image_size,
+                                  embedding_dim=self.vit.embedding_dim, window_size=window_size,
+                                  features=features)
 
         # classifer
         self.output = nn.Conv2d(
-            in_channels=64, out_channels=outc, kernel_size=1, stride=1, padding="same")
+            in_channels=features[0], out_channels=outc, kernel_size=1, stride=1, padding="same")
 
     def forward(self, x):
         # pass through encoder and get skip connections
@@ -247,9 +323,10 @@ class TransUNet(nn.Module):
 
 
 if __name__ == "__main__":
-    a = torch.rand(8, 3, 224, 224)
+    a = torch.rand(8, 1, 224, 224)
 
-    model = TransUNet(inc=3, outc=8, image_size=224)
+    model = Rotatory_TransUNet_Attention(
+        inc=1, outc=12, image_size=224, window_size=5)
 
     output = model(a)
 

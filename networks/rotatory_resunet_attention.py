@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch
-from DynamicRotatoryAttention import DynamicRotatoryAttentionModule
+from .DynamicRotatoryAttention import DynamicRotatoryAttentionModule
 from torchinfo import summary
 
 
@@ -181,7 +181,7 @@ class RotatoryUpSampleBlock(nn.Module):
         return x
 
 
-class RotatoryResUNetAttention(nn.Module):
+class Rotatory_ResUNet_Attention(nn.Module):
     def __init__(self, inc, outc, image_size, window_size):
 
         super().__init__()
@@ -242,7 +242,7 @@ if __name__ == "__main__":
 
     device = torch.device("cuda")
 
-    model = RotatoryResUNetAttention(
+    model = Rotatory_ResUNet_Attention(
         inc=3, outc=8, image_size=256, window_size=7).to(device=device)
 
     input = torch.rand(8, 3, 256, 256).to(device=device)

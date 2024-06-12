@@ -38,16 +38,12 @@ class OneHotEncoder():
 
 
 class VolumetricConverter():
-    def __init__(self, root_path):
+    def __init__(self, root_path, images_path, labels_path):
         self.root_path = root_path
 
-        # get images path
-        self.images_path = sorted(
-            glob(os.path.join(root_path, "*", "*", "*image*.nii.gz")))
+        self.images_path = images_path
 
-        # get labels path
-        self.labels_path = sorted(
-            glob(os.path.join(root_path, "*", "*", "*label*.nii.gz")))
+        self.labels_path = labels_path
 
         # create directory for storing images and labels
         self.images_folder_path = os.path.join(root_path, "images")
@@ -97,7 +93,6 @@ class VolumetricConverter():
             os.mkdir(current_folder_path)
 
         for i in range(array.shape[-1]):
-            # get image slice
             img_slice = array[:, :, i]
 
             # create file name
@@ -130,7 +125,6 @@ class VolumetricConverter():
             os.mkdir(current_folder_path)
 
         for i in range(output.shape[-1]):
-            # get label slice
             label = output[:, :, i]
 
             # create label name
@@ -147,7 +141,6 @@ class VolumetricConverter():
             encoded_label_reshape = resize(
                 encoded_label, (self.encoder.get_num_classes(), *new_size), preserve_range=True, anti_aliasing=True)
 
-            # argmax to get back class values
             encoded_label_reshape = np.argmax(encoded_label_reshape, axis=0)
 
             # save label
@@ -170,9 +163,15 @@ class VolumetricConverter():
 
 
 if __name__ == "__main__":
-    root_path = "./data_for_training/MMWHS"
+    root_path = "./data_for_training/Synapse"
 
-    converter = VolumetricConverter(root_path=root_path)
-    encoder = OneHotEncoder()
+    images_path = sorted(
+        glob(os.path.join(root_path, "RawData", "Training", "img", "*.nii.gz")))
+
+    labels_path = sorted(
+        glob(os.path.join(root_path, "RawData", "Training", "label", "*.nii.gz")))
+
+    converter = VolumetricConverter(
+        root_path=root_path, images_path=images_path, labels_path=labels_path)
 
     converter.convert_volumetric_to_slice((256, 256))

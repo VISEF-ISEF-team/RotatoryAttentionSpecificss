@@ -1,11 +1,11 @@
 import os
 from glob import glob
-from dataset_scripts.data_loaders import get_normal_loaders, get_single_batch_normal_loader, get_rotatory_loaders, get_single_batch_rotatory_loader
+from data_loaders import get_normal_loaders, get_single_batch_normal_loader, get_rotatory_loaders, get_single_batch_rotatory_loader
 
 
-def load_MMWHS(batch_size, num_workers, split, rot, test, num_classes):
+def get_dataset_loaders(dataset_name, batch_size, num_workers, split, rot, test, num_classes):
     if rot:
-        root = "./data_for_training/MMWHS/"
+        root = f"./data_for_training/{dataset_name}/"
 
         root_images = sorted(
             glob(os.path.join(root, "images", "*")))
@@ -40,8 +40,15 @@ def get_dataset(dataset_name, batch_size, num_workers, split, rot, test=False):
     if dataset_name == "MMWHS":
         num_classes = 8
         color_channel = 1
-        train_loader, val_loader = load_MMWHS(
-            batch_size, num_workers=num_workers, split=split, rot=rot, test=test, num_classes=num_classes)
+        train_loader, val_loader = get_dataset_loaders(
+            dataset_name="MMWHS", batch_size=batch_size, num_workers=num_workers, split=split, rot=rot, test=test, num_classes=num_classes)
+
+    elif dataset_name == "Synapse":
+        num_classes = 2
+        color_channel = 1
+
+        train_loader, val_loader = get_dataset_loaders(
+            dataset_name="Synapse", batch_size=batch_size, num_workers=num_workers, split=split, rot=rot, test=test, num_classes=num_classes)
 
     return color_channel, num_classes, train_loader, val_loader
 
@@ -52,8 +59,8 @@ if __name__ == "__main__":
     split = 0.2
     rot = True
 
-    num_classes, train_loader, val_loader = get_dataset(
-        dataset_name="MMWHS", batch_size=batch_size, num_workers=num_workers, split=split, rot=rot, test=False)
+    color_channel, num_classes, train_loader, val_loader = get_dataset(
+        dataset_name="Synapse", batch_size=batch_size, num_workers=num_workers, split=split, rot=rot, test=False)
 
     counter = 0
 

@@ -2,8 +2,8 @@ import os
 import numpy as np
 from sklearn.model_selection import train_test_split
 from torch.utils.data import DataLoader
-from dataset_scripts.dataset import RotatoryModelDataset, NormalModelDataset
-from dataset_scripts.batch_sampler import RotatoryBatchSampler
+from dataset import RotatoryModelDataset, NormalModelDataset
+from batch_sampler import RotatoryBatchSampler
 
 
 def load_dataset(images, masks, split=0.2):
@@ -130,7 +130,5 @@ def get_single_batch_rotatory_loader(root_images, root_labels, batch_size, num_c
 
     val_loader = DataLoader(
         dataset=val_dataset, batch_sampler=val_batch_sampler, num_workers=num_workers)
-
-    return (train_loader, val_loader)
 
     return (train_loader, val_loader)
