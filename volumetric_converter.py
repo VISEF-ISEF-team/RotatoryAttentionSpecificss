@@ -163,13 +163,13 @@ class VolumetricConverter():
 
 
 if __name__ == "__main__":
-    root_path = "./data_for_training/Synapse"
+    root_path = "./data_for_training/ImageTBAD/"
 
     images_path = sorted(
-        glob(os.path.join(root_path, "RawData", "Training", "img", "*.nii.gz")))
+        glob(os.path.join(root_path, "imageTBAD", "*image.nii.gz")))
 
     labels_path = sorted(
-        glob(os.path.join(root_path, "RawData", "Training", "label", "*.nii.gz")))
+        glob(os.path.join(root_path, "imageTBAD", "*label.nii.gz")))
 
     converter = VolumetricConverter(
         root_path=root_path, images_path=images_path, labels_path=labels_path)

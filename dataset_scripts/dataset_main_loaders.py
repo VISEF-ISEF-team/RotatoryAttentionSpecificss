@@ -19,7 +19,7 @@ def get_dataset_loaders(dataset_name, batch_size, num_workers, split, rot, test,
             train_loader, val_loader = get_rotatory_loaders(
                 root_images=root_images, root_labels=root_labels, batch_size=batch_size, num_classes=num_classes, split=split, num_workers=num_workers)
     else:
-        root = "./data_for_training/MMWHS/"
+        root = f"./data_for_training/{dataset_name}/"
 
         root_images = sorted(
             glob(os.path.join(root, "images", "*",  "*.png")))
@@ -44,11 +44,18 @@ def get_dataset(dataset_name, batch_size, num_workers, split, rot, test=False):
             dataset_name="MMWHS", batch_size=batch_size, num_workers=num_workers, split=split, rot=rot, test=test, num_classes=num_classes)
 
     elif dataset_name == "Synapse":
-        num_classes = 2
+        num_classes = 14
         color_channel = 1
 
         train_loader, val_loader = get_dataset_loaders(
             dataset_name="Synapse", batch_size=batch_size, num_workers=num_workers, split=split, rot=rot, test=test, num_classes=num_classes)
+
+    elif dataset_name == "ImageTBAD":
+        num_classes = 4
+        color_channel = 1
+
+        train_loader, val_loader = get_dataset_loaders(
+            dataset_name="ImageTBAD", batch_size=batch_size, num_workers=num_workers, split=split, rot=rot, test=test, num_classes=num_classes)
 
     return color_channel, num_classes, train_loader, val_loader
 
@@ -60,12 +67,19 @@ if __name__ == "__main__":
     rot = True
 
     color_channel, num_classes, train_loader, val_loader = get_dataset(
-        dataset_name="Synapse", batch_size=batch_size, num_workers=num_workers, split=split, rot=rot, test=False)
+        dataset_name="ImageTBAD", batch_size=batch_size, num_workers=num_workers, split=split, rot=rot, test=False)
 
     counter = 0
 
     for x, y in train_loader:
-        print(f"Image: {x.shape} || Mask: {y.shape}")
+        batch_size = x.shape[0]
+
+        if batch_size < 3:
+            print(f"Error, batch size < 3")
+            break
+
+        print(
+            f"Batch size: {batch_size} || Image: {x.shape} || Mask: {y.shape}")
         counter += 1
 
     print(f"Counter: {counter}")
